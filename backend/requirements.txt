@@ -1,0 +1,29 @@
+# FastAPI依赖
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# 数据库
+sqlalchemy==2.0.23
+alembic==1.13.0
+
+# Pydantic
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# 环境变量
+python-dotenv==1.0.0
+
+# GitHub API请求
+requests==2.31.0
+
+# 异步支持
+httpx==0.25.1
+
+# 日志
+loguru==0.7.2
+
+# 日期时间处理
+python-dateutil==2.8.2
+
+# 类型提示支持
+typing-extensions==4.8.0

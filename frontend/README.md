@@ -77,7 +77,7 @@ npm install
 npm run dev
 ```
 
-访问 http://localhost:3000
+访问 http://localhost:6608
 
 ### 构建生产版本
 
@@ -112,7 +112,7 @@ docker build -t ai-education-frontend .
 
 2. 运行容器：
 ```bash
-docker run -p 3000:3000 ai-education-frontend
+docker run -p 6608:6608 ai-education-frontend
 ```
 
 ### Vercel 部署
