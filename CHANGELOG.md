@@ -2,6 +2,29 @@
 
 ## 2026-01-16
 
+### GitHub令牌过期弹窗功能
+- **后端检测机制优化**：在 `backend/services/repo_sync_service.py` 中实现令牌过期缓存机制，避免频繁调用GitHub API。
+  - 添加 `token_expired` 实例变量缓存令牌状态，仅在同步操作失败时检查令牌有效性
+  - 修改 `get_repo_status()` 方法返回缓存状态，不再每次调用 `git ls-remote` 检查远程仓库
+  - 在 `clone_repository()` 和 `pull_updates()` 中检测认证错误并更新令牌状态
+  - 同步成功时自动重置令牌过期状态为 `False`
+
+- **前端弹窗实现**：在 `frontend/app/competition/page.tsx` 中添加GitHub令牌过期弹窗：
+  - 页面加载时调用 `checkTokenStatus()` 检查令牌状态
+  - 检测到 `token_expired: true` 时自动显示弹窗提示
+  - 弹窗包含详细的解决方案指导：获取新令牌、更新配置文件、重启服务
+  - 移除定期检查机制，避免频繁请求，仅在页面加载时检查一次
+
+- **API接口更新**：更新 `frontend/lib/repoApi.ts` 中 `RepoStatus` 接口，添加 `token_expired` 字段。
+
+- **代码清理**：清理 `frontend/lib/repoApi.ts` 中不必要的Typst到HTML转换代码（约100行）。
+
+### 技术要点
+1. **零频繁检查**：页面加载不再触发GitHub API调用，仅在同步失败时检测令牌过期
+2. **智能检测**：令牌过期状态在内存中缓存，快速响应页面请求
+3. **用户友好**：清晰的弹窗指导用户如何更新令牌，最小化用户困惑
+4. **自动恢复**：令牌更新后同步成功自动清除过期状态
+
 ### 后端清理
 - **删除不必要的目录**：删除了 `backend/models/`, `backend/schemas/`, `backend/database/`, `backend/scheduler/` 目录，因为这些目录中的代码目前未被使用，且项目已转向使用静态文件服务和GitHub同步API。
 - **简化主应用**：清理了 `backend/main.py` 中无用的导入和代码，仅保留静态文件服务和仓库同步API。

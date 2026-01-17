@@ -13,6 +13,9 @@ export interface RepoStatus {
   commit: string | null;
   commit_message?: string;
   commit_date?: string;
+  remote_accessible?: boolean;
+  remote_error?: string;
+  token_expired?: boolean;
   error?: string;
 }
 
@@ -456,109 +459,4 @@ function formatChapterTitle(filename: string): string {
   
   // 使用文件名作为标题，首字母大写
   return nameWithoutExt.charAt(0).toUpperCase() + nameWithoutExt.slice(1);
-}
-
-/**
- * 获取章节的Typst内容并转换为HTML（简单转换）
- */
-export async function getChapterContentHtml(chapterPath: string): Promise<string> {
-  try {
-    const fileContent = await getChapterFile(chapterPath);
-    
-    if (!fileContent.success) {
-      return '<p>无法加载章节内容</p>';
-    }
-    
-    if (fileContent.is_binary) {
-      return '<p>二进制文件，无法显示</p>';
-    }
-    
-    // 简单的Typst到HTML转换（基础实现）
-    const typstContent = fileContent.content;
-    return convertTypstToHtml(typstContent);
-  } catch (error) {
-    console.error('获取章节内容失败:', error);
-    return '<p>加载章节内容时出错</p>';
-  }
-}
-
-/**
- * 简单的Typst到HTML转换
- */
-function convertTypstToHtml(typstContent: string): string {
-  let html = typstContent;
-  
-  // 1. 代码块处理
-  html = html.replace(/```([\s\S]*?)```/g, (match, code) => {
-    return `<pre><code>${escapeHtml(code.trim())}</code></pre>`;
-  });
-  
-  // 2. 内联代码
-  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-  
-  // 3. 标题
-  html = html.replace(/^= (.*)$/gm, '<h1>$1</h1>');
-  html = html.replace(/^== (.*)$/gm, '<h2>$1</h2>');
-  html = html.replace(/^=== (.*)$/gm, '<h3>$1</h3>');
-  
-  // 4. 粗体
-  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  
-  // 5. 斜体
-  html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-  
-  // 6. 列表
-  html = html.replace(/^[-*] (.*)$/gm, '<li>$1</li>');
-  html = html.replace(/(<li>.*<\/li>\n?)+/g, (match) => {
-    return `<ul>${match}</ul>`;
-  });
-  
-  // 7. 段落
-  const lines = html.split('\n');
-  const paragraphs: string[] = [];
-  let currentParagraph: string[] = [];
-  
-  for (const line of lines) {
-    if (line.trim() === '') {
-      if (currentParagraph.length > 0) {
-        paragraphs.push(`<p>${currentParagraph.join(' ')}</p>`);
-        currentParagraph = [];
-      }
-    } else if (!line.startsWith('<') || line.endsWith('>')) {
-      // 已经是HTML标签，直接添加
-      paragraphs.push(line);
-    } else {
-      currentParagraph.push(line);
-    }
-  }
-  
-  if (currentParagraph.length > 0) {
-    paragraphs.push(`<p>${currentParagraph.join(' ')}</p>`);
-  }
-  
-  html = paragraphs.join('\n');
-  
-  // 8. 链接
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
-  
-  return html;
-}
-
-/**
- * HTML转义
- */
-function escapeHtml(text: string): string {
-  // 在非浏览器环境中使用纯JavaScript转义
-  if (typeof document === 'undefined') {
-    return text
-      .replace(/&/g, '&')
-      .replace(/</g, '<')
-      .replace(/>/g, '>')
-      .replace(/"/g, '"')
-      .replace(/'/g, '&#039;');
-  }
-  
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
 }

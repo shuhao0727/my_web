@@ -38,6 +38,9 @@ class GitHubRepoSyncService:
             self.auth_repo_url = self.repo_url
             logger.warning("未设置GITHUB_ACCESS_TOKEN，使用公开方式访问仓库")
         
+        # 令牌过期状态（默认为False，通过同步操作更新）
+        self.token_expired = False
+        
         # PDF缓存服务
         self.pdf_cache_service = PdfCacheService(self.repo_dir)
     
@@ -47,7 +50,7 @@ class GitHubRepoSyncService:
         return str(self.base_dir)
     
     def get_repo_status(self):
-        """获取仓库状态"""
+        """获取仓库状态（不检查远程仓库，只返回本地状态和缓存的令牌状态）"""
         try:
             if not self.repo_dir.exists():
                 return {
@@ -56,6 +59,7 @@ class GitHubRepoSyncService:
                     "last_updated": None,
                     "branch": None,
                     "commit": None,
+                    "token_expired": self.token_expired,
                 }
             
             # 检查是否为git仓库
@@ -66,12 +70,13 @@ class GitHubRepoSyncService:
                     "last_updated": datetime.fromtimestamp(self.repo_dir.stat().st_mtime).isoformat(),
                     "branch": None,
                     "commit": None,
+                    "token_expired": self.token_expired,
                 }
             
             # 获取git信息
             git_info = self.get_git_info()
             
-            return {
+            status_info = {
                 "exists": True,
                 "status": "cloned",
                 "last_updated": datetime.fromtimestamp(self.repo_dir.stat().st_mtime).isoformat(),
@@ -79,7 +84,10 @@ class GitHubRepoSyncService:
                 "commit": git_info.get("commit"),
                 "commit_message": git_info.get("commit_message"),
                 "commit_date": git_info.get("commit_date"),
+                "token_expired": self.token_expired,
             }
+            
+            return status_info
             
         except Exception as e:
             logger.error(f"获取仓库状态失败: {e}")
@@ -87,6 +95,7 @@ class GitHubRepoSyncService:
                 "exists": False,
                 "status": "error",
                 "error": str(e),
+                "token_expired": self.token_expired,
             }
     
     def get_git_info(self):
@@ -158,6 +167,9 @@ class GitHubRepoSyncService:
             
             logger.info(f"仓库克隆成功: {self.repo_dir}")
             
+            # 克隆成功，重置令牌过期状态
+            self.token_expired = False
+            
             return {
                 "success": True,
                 "message": "仓库克隆成功",
@@ -168,6 +180,12 @@ class GitHubRepoSyncService:
         except subprocess.CalledProcessError as e:
             error_msg = f"克隆仓库失败: {e.stderr}"
             logger.error(error_msg)
+            
+            # 检查是否认证失败
+            if "Authentication failed" in e.stderr or "could not read Username" in e.stderr:
+                self.token_expired = True
+                error_msg = "GitHub token expired or invalid. Please update your access token."
+            
             return {
                 "success": False,
                 "error": error_msg,
@@ -209,6 +227,9 @@ class GitHubRepoSyncService:
             
             logger.info(f"更新拉取成功: {result.stdout}")
             
+            # 拉取成功，重置令牌过期状态
+            self.token_expired = False
+            
             return {
                 "success": True,
                 "message": "更新拉取成功",
@@ -221,6 +242,12 @@ class GitHubRepoSyncService:
         except subprocess.CalledProcessError as e:
             error_msg = f"拉取更新失败: {e.stderr}"
             logger.error(error_msg)
+            
+            # 检查是否认证失败
+            if "Authentication failed" in e.stderr or "could not read Username" in e.stderr:
+                self.token_expired = True
+                error_msg = "GitHub token expired or invalid. Please update your access token."
+            
             return {
                 "success": False,
                 "error": error_msg,

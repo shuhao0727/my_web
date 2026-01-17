@@ -65,7 +65,7 @@ const Footer: React.FC = () => {
                             </Text>
                         </div>
 
-                        <Space direction="vertical" size="small">
+                        <Space orientation="vertical" size="small">
                             {contactInfo.map((item, index) => (
                                 <div key={index} className="flex items-center gap-2">
                                     <span className="text-gray-400">{item.icon}</span>

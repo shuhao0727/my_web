@@ -1,0 +1,13 @@
+
+> frontend@0.1.0 dev
+> PORT=6608 next dev
+
+▲ Next.js 16.1.2 (Turbopack)
+- Local:         http://localhost:6608
+- Network:       http://192.168.5.69:6608
+
+✓ Starting...
+✓ Ready in 897ms
+ GET /competition 200 in 613ms (compile: 371ms, render: 242ms)
+ GET /competition 200 in 76ms (compile: 29ms, render: 47ms)
+ GET /competition 200 in 140ms (compile: 37ms, render: 103ms)

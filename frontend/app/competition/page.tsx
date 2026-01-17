@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Layout, Menu, Typography, Spin } from 'antd';
-import { FolderOutlined, FileTextOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
+import { Layout, Menu, Typography, Spin, Modal, Alert } from 'antd';
+import { FolderOutlined, FileTextOutlined, MenuFoldOutlined, MenuUnfoldOutlined, WarningOutlined } from '@ant-design/icons';
 import * as repoApi from '@/lib/repoApi';
 
-const { Text } = Typography;
+const { Text, Paragraph } = Typography;
 const { Sider, Content } = Layout;
 
 interface ChapterNode {
@@ -23,9 +23,12 @@ export default function CompetitionPage() {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [leftCollapsed, setLeftCollapsed] = useState(false);
+  const [tokenExpiredModalVisible, setTokenExpiredModalVisible] = useState(false);
+  const [repoStatus, setRepoStatus] = useState<repoApi.RepoStatus | null>(null);
 
   useEffect(() => {
     loadRepositoryData();
+    checkTokenStatus();
   }, []);
 
   useEffect(() => {
@@ -51,8 +54,28 @@ export default function CompetitionPage() {
       }
     } catch (err: any) {
       console.error('加载仓库数据失败:', err);
+      // 检查是否是令牌过期错误
+      if (err.message?.includes('token') || err.message?.includes('authentication')) {
+        checkTokenStatus();
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const checkTokenStatus = async () => {
+    try {
+      const status = await repoApi.getRepoStatus();
+      setRepoStatus(status);
+      
+      // 如果令牌过期，显示弹窗
+      if (status.token_expired || (status.remote_error && status.remote_error.includes('token'))) {
+        setTokenExpiredModalVisible(true);
+      } else {
+        setTokenExpiredModalVisible(false);
+      }
+    } catch (err: any) {
+      console.error('检查令牌状态失败:', err);
     }
   };
 
@@ -152,8 +175,113 @@ export default function CompetitionPage() {
 
   const menuItems = buildMenuItems(chapterTree);
 
+  // GitHub令牌过期弹窗
+  const TokenExpiredModal = () => (
+    <Modal
+      title={
+        <div className="flex items-center">
+          <WarningOutlined className="text-yellow-500 mr-2" />
+          <span>GitHub访问令牌已过期</span>
+        </div>
+      }
+      open={tokenExpiredModalVisible}
+      onCancel={() => setTokenExpiredModalVisible(false)}
+      footer={[
+        <button
+          key="close"
+          onClick={() => setTokenExpiredModalVisible(false)}
+          className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md transition-colors"
+        >
+          稍后处理
+        </button>,
+      ]}
+      width={600}
+      closable={false}
+      maskClosable={false}
+    >
+      <div className="space-y-4">
+        <Alert
+          type="warning"
+          showIcon
+          message="GitHub访问令牌已过期"
+          description="您的GitHub访问令牌可能已过期或失效，这将影响文档的自动同步和PDF更新。"
+        />
+        
+        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+          <Paragraph strong>问题影响：</Paragraph>
+          <ul className="list-disc pl-5 space-y-1 mt-2">
+            <li>无法从GitHub仓库自动同步最新文档</li>
+            <li>无法生成新的PDF文件</li>
+            <li>现有PDF文件可能无法更新</li>
+            <li>文档目录可能无法加载最新内容</li>
+          </ul>
+        </div>
+
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
+          <Paragraph strong>解决方案：</Paragraph>
+          <ol className="list-decimal pl-5 space-y-2 mt-2">
+            <li>
+              <Paragraph strong>1. 获取新的GitHub访问令牌</Paragraph>
+              <ul className="list-disc pl-5 space-y-1 mt-1">
+                <li>访问 <a href="https://github.com/settings/tokens" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">GitHub Token设置页面</a></li>
+                <li>点击 "Generate new token (classic)"</li>
+                <li>选择 <code className="bg-gray-100 px-1 rounded">repo</code> 权限</li>
+                <li>设置合适的过期时间（建议90天）</li>
+                <li>复制生成的令牌</li>
+              </ul>
+            </li>
+            <li>
+              <Paragraph strong>2. 更新配置文件</Paragraph>
+              <ul className="list-disc pl-5 space-y-1 mt-1">
+                <li>打开文件：<code className="bg-gray-100 px-1 rounded">/Volumes/文件/4-实用代码/my_web/backend/.env</code></li>
+                <li>找到 <code className="bg-gray-100 px-1 rounded">GITHUB_ACCESS_TOKEN=</code> 行</li>
+                <li>将旧令牌替换为新令牌</li>
+                <li>保存文件</li>
+              </ul>
+            </li>
+            <li>
+              <Paragraph strong>3. 重启后端服务</Paragraph>
+              <ul className="list-disc pl-5 space-y-1 mt-1">
+                <li>停止当前运行的后端服务（Ctrl+C）</li>
+                <li>重新启动：<code className="bg-gray-100 px-1 rounded">python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload</code></li>
+              </ul>
+            </li>
+          </ol>
+        </div>
+
+        <div className="p-3 bg-gray-100 rounded-md">
+          <Paragraph strong>当前状态：</Paragraph>
+          <div className="mt-1 space-y-1">
+            {repoStatus?.remote_error && (
+              <div className="text-red-600 text-sm">
+                <span className="font-medium">错误信息：</span> {repoStatus.remote_error}
+              </div>
+            )}
+            {repoStatus?.last_updated && (
+              <div className="text-gray-600 text-sm">
+                <span className="font-medium">最后同步：</span> {new Date(repoStatus.last_updated).toLocaleString()}
+              </div>
+            )}
+            {repoStatus?.branch && (
+              <div className="text-gray-600 text-sm">
+                <span className="font-medium">当前分支：</span> {repoStatus.branch}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="text-center text-sm text-gray-500">
+          <p>如果您已更新令牌，弹窗将在下次检查时自动关闭。</p>
+          <p>您也可以点击"稍后处理"暂时关闭此提醒。</p>
+        </div>
+      </div>
+    </Modal>
+  );
+
   return (
     <Layout className="min-h-screen bg-white">
+      {/* GitHub令牌过期弹窗 */}
+      <TokenExpiredModal />
       <Sider
         width={320}
         collapsedWidth={60}

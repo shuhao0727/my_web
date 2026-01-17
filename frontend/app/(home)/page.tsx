@@ -4,16 +4,15 @@ import React from 'react';
 import Link from 'next/link';
 import { 
   RobotOutlined, TrophyOutlined, BookOutlined, 
-  UserOutlined, CloudOutlined, ApiOutlined
+  CloudOutlined, ApiOutlined, CodeOutlined, FileTextOutlined
 } from '@ant-design/icons';
 
 export default function HomePage() {
-  // 简洁导航项
+  // 简洁导航项 - 无描述版本
   const navItems = [
     {
       icon: <RobotOutlined />,
       title: 'AI智能体实验室',
-      description: '与AI对话学习',
       link: '/ai-lab',
       color: '#1890ff',
       external: false,
@@ -21,41 +20,43 @@ export default function HomePage() {
     {
       icon: <TrophyOutlined />,
       title: '信息学竞赛',
-      description: '竞赛辅导资源',
       link: '/competition',
       color: '#52c41a',
       external: false,
     },
     {
       icon: <BookOutlined />,
-      title: '信息技术教学',
-      description: '课程体系介绍',
+      title: '信息技术',
       link: '/teaching',
       color: '#722ed1',
       external: false,
     },
     {
-      icon: <UserOutlined />,
-      title: '关于我',
-      description: '教师介绍',
-      link: '/about',
+      icon: <CodeOutlined />,
+      title: '个人程序',
+      link: '/resources',
       color: '#fa8c16',
+      external: false,
+    },
+    {
+      icon: <FileTextOutlined />,
+      title: '文章',
+      link: '/blog',
+      color: '#13c2c2',
       external: false,
     },
     {
       icon: <CloudOutlined />,
       title: 'NAS导航页',
-      description: '内部服务门户',
       link: 'http://wangsh.cn:5000',
-      color: '#13c2c2',
+      color: '#eb2f96',
       external: true,
     },
     {
       icon: <ApiOutlined />,
       title: 'Dify应用平台',
-      description: 'AI应用开发平台',
       link: 'http://wangsh.cn:6606',
-      color: '#eb2f96',
+      color: '#722ed1',
       external: true,
     },
   ];
@@ -80,11 +81,8 @@ export default function HomePage() {
                   </div>
                 </div>
                 <div className="text-center">
-                  <div className="font-semibold text-gray-900 mb-1 group-hover:text-blue-600">
+                  <div className="font-semibold text-gray-900 group-hover:text-blue-600">
                     {item.title}
-                  </div>
-                  <div className="text-sm text-gray-500">
-                    {item.description}
                   </div>
                 </div>
               </div>

@@ -5,8 +5,10 @@ import os
 from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
 from fastapi.responses import Response, FileResponse
+from datetime import datetime
 
 from services.repo_sync_service import repo_sync_service
+from scheduler.sync_scheduler import repo_sync_scheduler
 
 router = APIRouter(prefix="/api/repo", tags=["repository"])
 
@@ -213,3 +215,42 @@ async def list_image_files():
         raise HTTPException(status_code=404, detail=result.get("error", "image目录不存在"))
     
     return result
+
+@router.get("/sync-scheduler/status")
+async def get_sync_scheduler_status():
+    """获取自动同步调度器状态"""
+    try:
+        status = repo_sync_scheduler.get_status()
+        return {
+            "success": True,
+            "status": status,
+            "timestamp": datetime.now().isoformat(),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取调度器状态失败: {str(e)}")
+
+@router.post("/sync-scheduler/start")
+async def start_sync_scheduler():
+    """启动自动同步调度器"""
+    try:
+        success = repo_sync_scheduler.start()
+        return {
+            "success": success,
+            "message": "调度器已启动" if success else "调度器启动失败或已在运行",
+            "status": repo_sync_scheduler.get_status(),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"启动调度器失败: {str(e)}")
+
+@router.post("/sync-scheduler/stop")
+async def stop_sync_scheduler():
+    """停止自动同步调度器"""
+    try:
+        repo_sync_scheduler.stop()
+        return {
+            "success": True,
+            "message": "调度器已停止",
+            "status": repo_sync_scheduler.get_status(),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"停止调度器失败: {str(e)}")

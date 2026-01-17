@@ -1,19 +1,63 @@
 """
-FastAPI主应用入口 - 简化版本
-仅保留核心功能：静态文件服务和仓库同步API
+FastAPI主应用入口 - 集成自动同步功能
+核心功能：静态文件服务、仓库同步API、自动同步调度器
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import os
+import logging
+from dotenv import load_dotenv
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
+    # 启动阶段
     print("🚀 启动后端服务...")
+    
+    # 加载环境变量
+    env_path = os.path.join(os.path.dirname(__file__), '.env')
+    if os.path.exists(env_path):
+        load_dotenv(env_path)
+        print(f"✅ 环境变量已加载: {env_path}")
+        print(f"   SYNC_INTERVAL_SECONDS={os.getenv('SYNC_INTERVAL_SECONDS')}")
+        print(f"   ENABLE_AUTO_SYNC={os.getenv('ENABLE_AUTO_SYNC')}")
+    else:
+        print(f"⚠️  环境变量文件不存在: {env_path}")
+    
+    # 配置日志
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.StreamHandler(),
+            logging.FileHandler("backend.log")
+        ]
+    )
+    
+    # 启动自动同步调度器
+    try:
+        from scheduler.sync_scheduler import repo_sync_scheduler
+        if repo_sync_scheduler.start():
+            print("✅ 仓库自动同步调度器已启动")
+        else:
+            print("⚠️  仓库自动同步调度器未启动（可能已禁用或已在运行）")
+    except Exception as e:
+        print(f"❌ 启动自动同步调度器失败: {e}")
+    
     yield
+    
+    # 关闭阶段
     print("🛑 关闭后端服务...")
+    
+    # 停止自动同步调度器
+    try:
+        from scheduler.sync_scheduler import repo_sync_scheduler
+        repo_sync_scheduler.stop()
+        print("✅ 仓库自动同步调度器已停止")
+    except Exception as e:
+        print(f"❌ 停止自动同步调度器失败: {e}")
 
 # 创建FastAPI应用
 app = FastAPI(

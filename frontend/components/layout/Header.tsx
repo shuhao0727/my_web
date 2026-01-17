@@ -2,216 +2,105 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { UserOutlined, HomeOutlined, BookOutlined, RobotOutlined, TrophyOutlined, DashboardOutlined, LoginOutlined, UserAddOutlined } from '@ant-design/icons';
-import { Button, Avatar, Dropdown } from 'antd';
-import type { MenuProps } from 'antd';
+import { HomeOutlined, BookOutlined, RobotOutlined, TrophyOutlined, CodeOutlined, FileTextOutlined } from '@ant-design/icons';
 
 const Header: React.FC = () => {
-  const isLoggedIn = false; // 暂时设置为未登录状态
-  const isAdmin = false; // 暂时设置为非管理员
-
-  // 传统导航菜单项
+  // 导航菜单项 - 精简版
   const navItems = [
     {
       key: 'home',
       label: '首页',
       icon: <HomeOutlined />,
       link: '/',
-      description: '网站主页'
     },
     {
       key: 'ai-lab',
       label: 'AI智能体实验室',
       icon: <RobotOutlined />,
       link: '/ai-lab',
-      description: '与AI智能体对话学习'
     },
     {
       key: 'competition',
       label: '信息学竞赛',
       icon: <TrophyOutlined />,
       link: '/competition',
-      description: '竞赛教程与资源'
     },
     {
       key: 'teaching',
-      label: '信息技术教学',
+      label: '信息技术',
       icon: <BookOutlined />,
       link: '/teaching',
-      description: '课程体系与教学资源'
     },
     {
       key: 'resources',
-      label: '学习资源',
-      icon: <BookOutlined />,
+      label: '个人程序',
+      icon: <CodeOutlined />,
       link: '/resources',
-      description: '教程、题解、模板'
     },
     {
       key: 'blog',
-      label: '教学博客',
-      icon: <BookOutlined />,
+      label: '文章',
+      icon: <FileTextOutlined />,
       link: '/blog',
-      description: '教学心得与技术分享'
-    },
-    {
-      key: 'about',
-      label: '关于我',
-      icon: <UserOutlined />,
-      link: '/about',
-      description: '教师介绍'
     }
-  ];
-
-  // 管理员专用菜单项
-  const adminNavItems = [
-    {
-      key: 'admin-dashboard',
-      label: '管理仪表板',
-      icon: <DashboardOutlined />,
-      link: '/admin/dashboard',
-      description: '数据统计与分析'
-    },
-    {
-      key: 'admin-students',
-      label: '学生管理',
-      icon: <UserOutlined />,
-      link: '/admin/students',
-      description: '学生账户管理'
-    },
-    {
-      key: 'admin-agents',
-      label: '智能体管理',
-      icon: <RobotOutlined />,
-      link: '/admin/agents',
-      description: 'AI智能体配置'
-    }
-  ];
-
-  const userMenuItems: MenuProps['items'] = [
-    {
-      key: 'profile',
-      label: '个人中心',
-      icon: <UserOutlined />,
-    },
-    {
-      key: 'my-interactions',
-      label: '我的对话记录',
-      icon: <BookOutlined />,
-    },
-    {
-      key: 'my-resources',
-      label: '我的学习资源',
-      icon: <BookOutlined />,
-    },
-    {
-      type: 'divider',
-    },
-    {
-      key: 'logout',
-      label: '退出登录',
-    },
   ];
 
   return (
-    <header className="bg-white shadow-md">
+    <header className="bg-white shadow-sm border-b border-gray-100">
       {/* 主导航栏 */}
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo区域 */}
-          <div className="flex items-center">
-            <Link href="/" className="flex items-center space-x-3">
-              <div className="bg-blue-600 text-white p-2 rounded-lg">
-                <RobotOutlined className="text-xl" />
+        <div className="relative h-16">
+          {/* Logo区域 - 左侧 */}
+          <div className="absolute left-0 top-0 h-full flex items-center">
+            <Link href="/" className="flex items-center space-x-3 group">
+              <div className="bg-gradient-to-br from-blue-500 to-blue-700 text-white p-2.5 rounded-xl shadow-sm group-hover:shadow-md transition-all duration-300">
+                <RobotOutlined className="text-lg" />
               </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">wangsh</h1>
+              <div className="flex flex-col">
+                <h1 className="text-xl font-bold text-gray-900 tracking-tight">wangsh</h1>
               </div>
             </Link>
           </div>
 
-          {/* 桌面端导航菜单 */}
-          <nav className="hidden lg:flex items-center space-x-1">
-            {navItems.map((item) => (
-              <Link
-                key={item.key}
-                href={item.link}
-                className="group relative px-4 py-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors duration-200"
-              >
-                <div className="flex items-center space-x-2">
-                  {item.icon}
-                  <span className="font-medium">{item.label}</span>
-                </div>
-                <div className="absolute top-full left-0 mt-1 w-48 bg-white shadow-lg rounded-md p-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                  <p className="text-sm text-gray-600">{item.description}</p>
-                </div>
-              </Link>
-            ))}
-            
-            {/* 管理员菜单（如果用户是管理员） */}
-            {isAdmin && adminNavItems.map((item) => (
-              <Link
-                key={item.key}
-                href={item.link}
-                className="px-4 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors duration-200 flex items-center space-x-2"
-              >
-                {item.icon}
-                <span className="font-medium">{item.label}</span>
-              </Link>
-            ))}
+          {/* 桌面端导航菜单 - 绝对居中（忽略Logo） */}
+          <nav className="hidden lg:flex items-center justify-center absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
+            <div className="flex items-center space-x-1 bg-gray-50/80 backdrop-blur-sm rounded-xl p-1.5 shadow-inner">
+              {navItems.map((item) => (
+                <Link
+                  key={item.key}
+                  href={item.link}
+                  className="relative px-4 py-2.5 text-gray-700 hover:text-blue-600 rounded-lg transition-all duration-300 group/nav"
+                >
+                  <div className="flex items-center space-x-2.5">
+                    <div className="text-gray-500 group-hover/nav:text-blue-500 transition-colors duration-300">
+                      {item.icon}
+                    </div>
+                    <span className="font-medium text-sm tracking-wide whitespace-nowrap">
+                      {item.label}
+                    </span>
+                  </div>
+                  {/* 活动状态指示器 */}
+                  <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1.5 h-1.5 bg-blue-500 rounded-full opacity-0 group-hover/nav:opacity-100 transition-opacity duration-300"></div>
+                </Link>
+              ))}
+            </div>
           </nav>
 
-          {/* 用户操作区域 */}
-          <div className="flex items-center space-x-4">
-            {isLoggedIn ? (
-              <>
-                <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-                  <div className="flex items-center space-x-2 cursor-pointer hover:bg-gray-100 p-2 rounded-md">
-                    <Avatar icon={<UserOutlined />} className="bg-blue-500" />
-                    <div className="hidden md:block">
-                      <p className="text-sm font-medium">学生姓名</p>
-                      <p className="text-xs text-gray-500">高一(1)班</p>
-                    </div>
-                  </div>
-                </Dropdown>
-                {isAdmin && (
-                  <Link href="/admin/dashboard">
-                    <Button type="primary" icon={<DashboardOutlined />}>
-                      管理后台
-                    </Button>
-                  </Link>
-                )}
-              </>
-            ) : (
-              <div className="flex items-center space-x-3">
-                <Link href="/login">
-                  <Button icon={<LoginOutlined />} className="flex items-center">
-                    <span className="hidden sm:inline">学生登录</span>
-                  </Button>
-                </Link>
-                <Link href="/register">
-                  <Button type="primary" icon={<UserAddOutlined />} className="flex items-center">
-                    <span className="hidden sm:inline">注册账号</span>
-                  </Button>
-                </Link>
-              </div>
-            )}
-          </div>
         </div>
       </div>
 
       {/* 移动端导航菜单 */}
-      <div className="lg:hidden border-t">
-        <div className="container mx-auto px-4 py-2">
-          <div className="grid grid-cols-3 gap-1">
-            {navItems.slice(0, 6).map((item) => (
+      <div className="lg:hidden border-t border-gray-100 bg-gray-50/50">
+        <div className="container mx-auto px-4 py-3">
+          <div className="grid grid-cols-3 gap-2">
+            {navItems.map((item) => (
               <Link
                 key={item.key}
                 href={item.link}
-                className="flex flex-col items-center justify-center p-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                className="flex flex-col items-center justify-center p-3 text-gray-700 hover:text-blue-600 hover:bg-white rounded-xl transition-all duration-300 shadow-sm hover:shadow"
               >
-                {item.icon}
-                <span className="text-xs mt-1">{item.label}</span>
+                <div className="text-lg mb-1.5">{item.icon}</div>
+                <span className="text-xs font-medium">{item.label}</span>
               </Link>
             ))}
           </div>
