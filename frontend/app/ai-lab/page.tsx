@@ -1,230 +1,279 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import { 
-  SendOutlined, UserOutlined,
-  LoadingOutlined
-} from '@ant-design/icons';
-import { 
-  Button, Input, Avatar, Typography, 
-  Spin, Select
-} from 'antd';
+import React, { useState, useEffect, useRef } from 'react';
+import { Spin, Modal, Form, Input, Select, Button } from 'antd';
+import { useRouter } from 'next/navigation';
+import aiApi from '@/lib/aiApi';
 
-const { Paragraph, Text } = Typography;
-const { TextArea } = Input;
+// 导入组件
+import Header from './components/Header';
+import Sidebar from './components/Sidebar';
+import ChatArea from './components/ChatArea';
+
+// 导入类型
+import { 
+  User, AiAgent, Conversation, Message, 
+  CreateAgentForm 
+} from './components/types';
+
 const { Option } = Select;
 
-// 消息类型
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: string;
-}
-
-// AI智能体数据
-const aiAgents = [
-  {
-    id: 'math_tutor',
-    name: '数学辅导助手',
-    icon: '🧮',
-    description: '解答数学问题',
-  },
-  {
-    id: 'code_reviewer',
-    name: '代码审查专家',
-    icon: '💻',
-    description: '审查代码风格',
-  },
-  {
-    id: 'algorithm_teacher',
-    name: '算法竞赛导师',
-    icon: '⚡',
-    description: '讲解竞赛算法',
-  },
-  {
-    id: 'learning_advisor',
-    name: '学习规划顾问',
-    icon: '📚',
-    description: '制定学习计划',
-  },
-];
-
-// 初始对话
-const initialMessages: Message[] = [
-  { 
-    id: '1', 
-    role: 'assistant', 
-    content: '您好！我是AI学习助手，请问有什么可以帮您？', 
-    timestamp: '09:00' 
-  },
-];
-
 export default function AiLabPage() {
-  const [selectedAgent, setSelectedAgent] = useState(aiAgents[0]);
+  const router = useRouter();
+  
+  // 用户状态
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // AI智能体状态
+  const [aiAgents, setAiAgents] = useState<AiAgent[]>([]);
+  const [selectedAgent, setSelectedAgent] = useState<AiAgent | null>(null);
+  const [loadingAgents, setLoadingAgents] = useState(false);
+
+  // 对话状态
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // 滚动到最新消息
+  // 搜索状态
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // 初始化数据
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    const savedUser = localStorage.getItem('ai_lab_user');
+    if (savedUser) {
+      const userData = JSON.parse(savedUser);
+      setUser(userData);
+      setIsLoggedIn(true);
+      loadAiAgents();
+      loadUserConversations(userData.id);
+    }
+    setLoading(false);
+  }, []);
 
-  // 发送消息
-  const handleSendMessage = () => {
-    if (!inputMessage.trim()) return;
+  // 加载AI智能体
+  const loadAiAgents = async () => {
+    setLoadingAgents(true);
+    try {
+      const response = await aiApi.agent.getAgents();
+      if (response.success && response.agents.length > 0) {
+        setAiAgents(response.agents);
+        setSelectedAgent(response.agents[0]);
+      } else {
+        // 如果没有智能体，创建一些默认的
+        const defaultAgents: AiAgent[] = [
+          { id: 1, name: '数学辅导助手', description: '解答数学问题', icon: '🧮', api_type: 'mock', is_active: true },
+          { id: 2, name: '代码审查专家', description: '审查代码风格', icon: '💻', api_type: 'mock', is_active: true },
+          { id: 3, name: '算法竞赛导师', description: '讲解竞赛算法', icon: '⚡', api_type: 'mock', is_active: true },
+          { id: 4, name: '学习规划顾问', description: '制定学习计划', icon: '📚', api_type: 'mock', is_active: true },
+        ];
+        setAiAgents(defaultAgents);
+        setSelectedAgent(defaultAgents[0]);
+      }
+    } catch (error) {
+      console.error('加载AI智能体失败:', error);
+      // 使用默认数据
+      const defaultAgents: AiAgent[] = [
+        { id: 1, name: '数学辅导助手', description: '解答数学问题', icon: '🧮', api_type: 'mock', is_active: true },
+        { id: 2, name: '代码审查专家', description: '审查代码风格', icon: '💻', api_type: 'mock', is_active: true },
+        { id: 3, name: '算法竞赛导师', description: '讲解竞赛算法', icon: '⚡', api_type: 'mock', is_active: true },
+        { id: 4, name: '学习规划顾问', description: '制定学习计划', icon: '📚', api_type: 'mock', is_active: true },
+      ];
+      setAiAgents(defaultAgents);
+      setSelectedAgent(defaultAgents[0]);
+    } finally {
+      setLoadingAgents(false);
+    }
+  };
 
-    const newUserMessage: Message = {
+  // 加载用户对话
+  const loadUserConversations = async (userId: number) => {
+    try {
+      const response = await aiApi.conversation.getConversations(userId);
+      if (response.success) {
+        setConversations(response.conversations);
+      }
+    } catch (error) {
+      console.error('加载对话失败:', error);
+    }
+  };
+
+  // 处理登录（实际上，这个页面假设用户已经登录，否则会重定向到登录页面）
+  // 注意：登录功能在登录页面，这里只处理登出
+
+  // 处理登出
+  const handleLogout = () => {
+    setUser(null);
+    setIsLoggedIn(false);
+    setSelectedAgent(null);
+    setAiAgents([]);
+    setConversations([]);
+    setMessages([]);
+    localStorage.removeItem('ai_lab_user');
+    // 重定向到登录页面
+    router.push('/ai-lab/login');
+  };
+
+  // 处理发送消息
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim() || !selectedAgent || !user) return;
+
+    const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
       content: inputMessage,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
-    setMessages(prev => [...prev, newUserMessage]);
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
     setInputMessage('');
     setIsLoading(true);
 
-    // 模拟AI回复
-    setTimeout(() => {
+    try {
+      const response = await aiApi.chat.chat(
+        user.id,
+        selectedAgent.id,
+        inputMessage,
+        selectedConversation?.id
+      );
+
+      if (response.success) {
+        // 添加AI回复
+        const aiMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: response.messages[1]?.content || `收到您的消息："${inputMessage}"。`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          tokens: response.messages[1]?.tokens,
+        };
+
+        setMessages([...newMessages, aiMessage]);
+        
+        // 如果这是新对话，添加到对话列表
+        if (!selectedConversation && response.conversation) {
+          const newConv: Conversation = {
+            id: response.conversation.id,
+            session_id: response.conversation.session_id,
+            title: response.conversation.title || `与${selectedAgent.name}的对话`,
+            ai_agent: selectedAgent.name,
+            start_time: new Date().toISOString(),
+            total_messages: 2,
+            total_tokens: (response.messages[0]?.tokens || 0) + (response.messages[1]?.tokens || 0),
+          };
+          setConversations([newConv, ...conversations]);
+          setSelectedConversation(newConv);
+        } else {
+          // 刷新对话列表
+          loadUserConversations(user.id);
+        }
+      }
+    } catch (error) {
+      console.error('发送消息失败:', error);
+      // 模拟AI回复
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: `收到您的消息："${inputMessage}"。作为${selectedAgent.name}，我会尽力帮助您。这是模拟回复，实际应用中AI会根据您的问题提供专业解答。`,
+        content: `收到您的消息："${inputMessage}"。作为${selectedAgent.name}，我会尽力帮助您。`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
-
-      setMessages(prev => [...prev, aiMessage]);
+      setMessages([...newMessages, aiMessage]);
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
+
+  // 加载对话消息
+  const loadConversationMessages = async (conversationId: number) => {
+    try {
+      const response = await aiApi.conversation.getConversation(conversationId, true);
+      if (response.success && response.conversation.messages) {
+        const loadedMessages: Message[] = response.conversation.messages.map((msg: any) => ({
+          id: msg.id.toString(),
+          role: msg.role,
+          content: msg.content,
+          timestamp: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          tokens: msg.tokens,
+        }));
+        setMessages(loadedMessages);
+      }
+    } catch (error) {
+      console.error('加载对话消息失败:', error);
+    }
+  };
+
+  // 选择对话
+  const handleSelectConversation = (conversation: Conversation) => {
+    setSelectedConversation(conversation);
+    loadConversationMessages(conversation.id);
+  };
+
+  // 开始新对话
+  const handleNewConversation = () => {
+    setSelectedConversation(null);
+    setMessages([]);
+  };
+
+  // 打开管理员面板（在新标签页中打开）
+  const handleOpenAdminPanel = () => {
+    window.open('/ai-lab/admin', '_blank');
+  };
+
+  // 如果正在加载，显示加载动画
+  if (loading) {
+    return <Spin fullscreen tip="正在加载..." />;
+  }
+
+  // 如果没有登录，重定向到登录页面
+  if (!isLoggedIn) {
+    // 使用 useEffect 进行重定向，避免 SSR 问题
+    // 但因为我们使用了 'use client'，可以直接使用 window.location
+    if (typeof window !== 'undefined') {
+      window.location.href = '/ai-lab/login';
+    }
+    return <Spin fullscreen tip="正在跳转到登录页面..." />;
+  }
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="max-w-4xl mx-auto p-4">
-        {/* 智能体选择 */}
-        <div className="mb-6">
-          <Select
-            className="w-full"
-            value={selectedAgent.id}
-            onChange={(value) => {
-              const agent = aiAgents.find(a => a.id === value);
-              if (agent) setSelectedAgent(agent);
-            }}
-          >
-            {aiAgents.map(agent => (
-              <Option key={agent.id} value={agent.id}>
-                <div className="flex items-center">
-                  <span className="text-xl mr-3">{agent.icon}</span>
-                  <div>
-                    <div className="font-medium">{agent.name}</div>
-                    <div className="text-xs text-gray-500">{agent.description}</div>
-                  </div>
-                </div>
-              </Option>
-            ))}
-          </Select>
-        </div>
+      {/* 顶部工具栏 */}
+      <Header 
+        user={user}
+        onOpenAdminPanel={handleOpenAdminPanel}
+        onLogout={handleLogout}
+      />
 
-        {/* 对话界面 */}
-        <div className="bg-gray-50 rounded-lg border">
-          {/* 对话头部 */}
-          <div className="border-b p-4 bg-white rounded-t-lg">
-            <div className="flex items-center">
-              <div className="text-2xl mr-3">{selectedAgent.icon}</div>
-              <div>
-                <div className="font-semibold text-lg">{selectedAgent.name}</div>
-                <div className="text-sm text-gray-500">{selectedAgent.description}</div>
-              </div>
-            </div>
-          </div>
+      <div className="container mx-auto px-4 py-6">
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* 左侧边栏 */}
+          <Sidebar
+            user={user}
+            aiAgents={aiAgents}
+            loadingAgents={loadingAgents}
+            conversations={conversations}
+            selectedAgent={selectedAgent}
+            selectedConversation={selectedConversation}
+            searchQuery={searchQuery}
+            onSelectAgent={setSelectedAgent}
+            onSelectConversation={handleSelectConversation}
+            onNewConversation={handleNewConversation}
+            onSearchChange={setSearchQuery}
+          />
 
-          {/* 消息区域 */}
-          <div className="h-[400px] overflow-y-auto p-4">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex mb-4 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-[70%] rounded-lg px-4 py-3 ${
-                    message.role === 'user'
-                      ? 'bg-blue-100 text-gray-800'
-                      : 'bg-white text-gray-800 border'
-                  }`}
-                >
-                  <div className="flex items-center mb-2">
-                    {message.role === 'assistant' ? (
-                      <>
-                        <span className="mr-2">{selectedAgent.icon}</span>
-                        <Text strong>{selectedAgent.name}</Text>
-                      </>
-                    ) : (
-                      <>
-                        <Avatar 
-                          size="small" 
-                          icon={<UserOutlined />} 
-                          className="mr-2 bg-gray-400"
-                        />
-                        <Text strong>我</Text>
-                      </>
-                    )}
-                    <Text type="secondary" className="ml-2 text-xs">
-                      {message.timestamp}
-                    </Text>
-                  </div>
-                  <Paragraph className="mb-0 whitespace-pre-wrap">
-                    {message.content}
-                  </Paragraph>
-                </div>
-              </div>
-            ))}
-            
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="bg-white border rounded-lg px-4 py-3">
-                  <div className="flex items-center">
-                    <span className="mr-2">{selectedAgent.icon}</span>
-                    <Spin indicator={<LoadingOutlined style={{ fontSize: 16 }} spin />} />
-                    <Text className="ml-2">正在思考...</Text>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* 输入区域 */}
-          <div className="border-t p-4 bg-white rounded-b-lg">
-            <div className="flex space-x-2">
-              <TextArea
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                placeholder={`向${selectedAgent.name}提问...`}
-                autoSize={{ minRows: 2, maxRows: 4 }}
-                onPressEnter={(e) => {
-                  if (!e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage();
-                  }
-                }}
-                className="flex-1"
-              />
-              <Button
-                type="primary"
-                icon={<SendOutlined />}
-                onClick={handleSendMessage}
-                disabled={!inputMessage.trim() || isLoading}
-                loading={isLoading}
-                className="h-auto px-6"
-              >
-                发送
-              </Button>
-            </div>
-          </div>
+          {/* 右侧主区域 */}
+          <ChatArea
+            user={user}
+            selectedAgent={selectedAgent}
+            selectedConversation={selectedConversation}
+            messages={messages}
+            inputMessage={inputMessage}
+            isLoading={isLoading}
+            onSendMessage={handleSendMessage}
+            onInputChange={setInputMessage}
+          />
         </div>
       </div>
     </div>

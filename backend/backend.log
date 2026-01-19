@@ -1,55 +1,77 @@
 INFO:     Will watch for changes in these directories: ['/Volumes/文件/4-实用代码/my_web/backend']
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-INFO:     Started reloader process [43307] using StatReload
+INFO:     Started reloader process [42113] using StatReload
 未设置GITHUB_ACCESS_TOKEN，使用公开方式访问仓库
-INFO:     Started server process [43360]
+INFO:     Started server process [42165]
 INFO:     Waiting for application startup.
-2026-01-17 20:17:47,800 - scheduler.sync_scheduler - INFO - 自动同步配置: enable=True, interval=86400s
-2026-01-17 20:17:47,800 - scheduler.sync_scheduler - INFO - 启动时立即执行一次同步
-2026-01-17 20:17:47,800 - scheduler.sync_scheduler - INFO - 开始定时同步任务: 2026-01-17T20:17:47.800845
-2026-01-17 20:17:47,844 - services.repo_sync_service - INFO - 仓库已存在，执行拉取更新
-2026-01-17 20:17:47,844 - services.repo_sync_service - INFO - 开始拉取更新: /Volumes/文件/4-实用代码/my_web/content/2-My-notes
-2026-01-17 20:19:02,997 - services.repo_sync_service - ERROR - 拉取更新失败: fatal: unable to access 'https://github.com/shuhao0727/2-My-notes.git/': Failed to connect to github.com port 443 after 75033 ms: Couldn't connect to server
+2026-01-19 20:54:29,998 - scheduler.sync_scheduler - INFO - 自动同步配置: enable=True, interval=86400s
+2026-01-19 20:54:29,998 - scheduler.sync_scheduler - INFO - 启动时立即执行一次同步
+2026-01-19 20:54:29,998 - scheduler.sync_scheduler - INFO - 开始定时同步任务: 2026-01-19T20:54:29.998726
+2026-01-19 20:54:30,043 - services.repo_sync_service - INFO - 仓库已存在，执行拉取更新
+2026-01-19 20:54:30,043 - services.repo_sync_service - INFO - 开始拉取更新: /Volumes/文件/4-实用代码/my_web/content/2-My-notes
+2026-01-19 20:55:45,131 - services.repo_sync_service - ERROR - 拉取更新失败: fatal: unable to access 'https://github.com/shuhao0727/2-My-notes.git/': Failed to connect to github.com port 443 after 75002 ms: Couldn't connect to server
 
-2026-01-17 20:19:02,998 - scheduler.sync_scheduler - ERROR - 定时同步失败: 拉取更新失败: fatal: unable to access 'https://github.com/shuhao0727/2-My-notes.git/': Failed to connect to github.com port 443 after 75033 ms: Couldn't connect to server
+2026-01-19 20:55:45,131 - scheduler.sync_scheduler - ERROR - 定时同步失败: 拉取更新失败: fatal: unable to access 'https://github.com/shuhao0727/2-My-notes.git/': Failed to connect to github.com port 443 after 75002 ms: Couldn't connect to server
 
-2026-01-17 20:19:02,999 - scheduler.sync_scheduler - INFO - 仓库同步调度器已启动，每86400秒执行一次
+2026-01-19 20:55:45,132 - scheduler.sync_scheduler - INFO - 仓库同步调度器已启动，每86400秒执行一次
 INFO:     Application startup complete.
 ✅ 静态文件服务已挂载: /content -> /Volumes/文件/4-实用代码/my_web/content
+✅ AI智能体路由已加载（模块化版本）
 🚀 启动后端服务...
 ✅ 环境变量已加载: /Volumes/文件/4-实用代码/my_web/backend/.env
    SYNC_INTERVAL_SECONDS=86400
    ENABLE_AUTO_SYNC=True
 ✅ 仓库自动同步调度器已启动
-INFO:     127.0.0.1:58365 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58449 - "GET /api/repo/status HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58711 - "GET /api/repo/chapters HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58712 - "GET /api/repo/status HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58711 - "GET /api/repo/list?path=chapters%2F1.basics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58711 - "GET /api/repo/list?path=chapters%2F2.data-structures HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58711 - "GET /api/repo/list?path=chapters%2F3.algorithms HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58711 - "GET /api/repo/list?path=chapters%2F4.graph-theory HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58711 - "GET /api/repo/list?path=chapters%2F5.dynamic-programming HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58711 - "GET /api/repo/list?path=chapters%2F6.mathematics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58711 - "GET /api/repo/list?path=chapters%2F7.strings HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58711 - "GET /api/repo/list?path=chapters%2F8.techniques HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58714 - "GET /api/repo/chapter-pdf-static/chapters/1.basics/1.1-c%2B%2B.typ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58716 - "GET /api/repo/chapter-pdf-static/chapters/1.basics/1.1-c%2B%2B.typ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58835 - "GET /api/repo/chapters HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58963 - "GET /api/repo/chapters HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58964 - "GET /api/repo/status HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58964 - "GET /api/repo/list?path=chapters%2F1.basics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58964 - "GET /api/repo/list?path=chapters%2F2.data-structures HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58964 - "GET /api/repo/list?path=chapters%2F3.algorithms HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58964 - "GET /api/repo/list?path=chapters%2F4.graph-theory HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58964 - "GET /api/repo/list?path=chapters%2F5.dynamic-programming HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58964 - "GET /api/repo/list?path=chapters%2F6.mathematics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58964 - "GET /api/repo/list?path=chapters%2F7.strings HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58964 - "GET /api/repo/list?path=chapters%2F8.techniques HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58966 - "GET /api/repo/chapter-pdf-static/chapters/1.basics/1.1-c%2B%2B.typ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58974 - "GET /api/repo/chapter-pdf-static/chapters/3.algorithms/3.2-enumeration.typ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58976 - "GET /api/repo/chapter-pdf-static/chapters/3.algorithms/3.2-enumeration.typ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58979 - "GET /api/repo/chapter-pdf-static/chapters/3.algorithms/3.5-binary-search.typ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58976 - "GET /api/repo/chapter-pdf-static/chapters/3.algorithms/3.5-binary-search.typ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58983 - "GET /api/repo/chapter-pdf-static/chapters/3.algorithms/3.9-bfs.typ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58976 - "GET /api/repo/chapter-pdf-static/chapters/3.algorithms/3.9-bfs.typ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50825 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50855 - "GET /api/ai/user-management/users?page=1&page_size=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50979 - "GET /api/ai/user-management/users?page=1&page_size=50&role=student HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50990 - "POST /api/ai/user-management/users/import HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50990 - "GET /api/ai/user-management/users?page=1&page_size=50&role=student HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50990 - "GET /api/ai/user-management/users?page=1&page_size=50&role=student HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51013 - "DELETE /api/ai/user-management/users/9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51013 - "GET /api/ai/user-management/users?page=1&page_size=50&role=student HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51025 - "OPTIONS /api/ai/user-management/users/7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51025 - "PUT /api/ai/user-management/users/7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51025 - "GET /api/ai/user-management/users?page=1&page_size=50&role=student HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51359 - "POST /api/ai/user-management/users/import HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51359 - "OPTIONS /api/ai/user-management/users?page=1&page_size=50&role=student HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51359 - "GET /api/ai/user-management/users?page=1&page_size=50&role=student HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51359 - "GET /api/ai/user-management/users?page=1&page_size=50&role=student HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51550 - "OPTIONS /api/ai/agents?active_only=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51551 - "OPTIONS /api/ai/conversations?limit=20&offset=0&include_messages=false&user_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51550 - "GET /api/ai/agents?active_only=true HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:51551 - "GET /api/ai/conversations?limit=20&offset=0&include_messages=false&user_id=1 HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:51551 - "OPTIONS /api/ai/agents/?active_only=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51550 - "OPTIONS /api/ai/conversations/?limit=20&offset=0&include_messages=false&user_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51551 - "GET /api/ai/agents/?active_only=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51550 - "GET /api/ai/conversations/?limit=20&offset=0&include_messages=false&user_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51576 - "OPTIONS /api/ai/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51576 - "POST /api/ai/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51576 - "GET /api/ai/agents?active_only=true HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:51588 - "OPTIONS /api/ai/conversations?limit=20&offset=0&include_messages=false&user_id=8 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51588 - "GET /api/ai/conversations?limit=20&offset=0&include_messages=false&user_id=8 HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:51576 - "OPTIONS /api/ai/conversations/?limit=20&offset=0&include_messages=false&user_id=8 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51588 - "GET /api/ai/agents/?active_only=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51576 - "GET /api/ai/conversations/?limit=20&offset=0&include_messages=false&user_id=8 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51614 - "POST /api/ai/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51614 - "GET /api/ai/agents?active_only=true HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:51624 - "GET /api/ai/conversations?limit=20&offset=0&include_messages=false&user_id=1 HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:51614 - "GET /api/ai/agents/?active_only=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51624 - "GET /api/ai/conversations/?limit=20&offset=0&include_messages=false&user_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51634 - "GET /api/ai/user-management/users?page=1&page_size=50&role=student HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51783 - "GET /api/ai/user-management/users?page=1&page_size=50&role=student HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51814 - "GET /api/ai/user-management/users?page=1&page_size=50&role=student HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51928 - "GET /api/ai/user-management/users?page=1&page_size=50&role=student HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51938 - "OPTIONS /api/ai/user-management/users/9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51938 - "DELETE /api/ai/user-management/users/9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51938 - "GET /api/ai/user-management/users?page=1&page_size=50&role=student HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52186 - "GET /api/ai/user-management/users?page=1&page_size=50&role=student HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52300 - "GET /api/ai/user-management/users?page=1&page_size=50&role=student HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52300 - "GET /api/ai/agents?active_only=true HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:52308 - "GET /api/ai/conversations?limit=20&offset=0&include_messages=false&user_id=1 HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:52308 - "GET /api/ai/agents/?active_only=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52300 - "GET /api/ai/conversations/?limit=20&offset=0&include_messages=false&user_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52320 - "OPTIONS /api/ai/agents?active_only=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52320 - "GET /api/ai/agents?active_only=false HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:52320 - "OPTIONS /api/ai/agents/?active_only=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52320 - "GET /api/ai/agents/?active_only=false HTTP/1.1" 200 OK

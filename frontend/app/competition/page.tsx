@@ -203,7 +203,7 @@ export default function CompetitionPage() {
         <Alert
           type="warning"
           showIcon
-          message="GitHub访问令牌已过期"
+          title="GitHub访问令牌已过期"
           description="您的GitHub访问令牌可能已过期或失效，这将影响文档的自动同步和PDF更新。"
         />
         

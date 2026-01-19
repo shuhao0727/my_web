@@ -15,7 +15,7 @@ const Header: React.FC = () => {
     },
     {
       key: 'ai-lab',
-      label: 'AI智能体实验室',
+      label: 'AI智能体',
       icon: <RobotOutlined />,
       link: '/ai-lab',
     },
@@ -46,7 +46,7 @@ const Header: React.FC = () => {
   ];
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-100">
+    <header className="bg-white shadow-sm border-b border-gray-100" suppressHydrationWarning translate="no">
       {/* 主导航栏 */}
       <div className="container mx-auto px-4">
         <div className="relative h-16">

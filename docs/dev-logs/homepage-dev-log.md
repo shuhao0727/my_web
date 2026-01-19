@@ -213,7 +213,7 @@
       ```typescript
       // 修改前：有"关于我"卡片，缺少"个人程序"和"文章"
       const navItems = [
-        { icon: <RobotOutlined />, title: 'AI智能体实验室', link: '/ai-lab' },
+        { icon: <RobotOutlined />, title: 'AI智能体', link: '/ai-lab' },
         { icon: <TrophyOutlined />, title: '信息学竞赛', link: '/competition' },
         { icon: <BookOutlined />, title: '信息技术教学', link: '/teaching' },
         { icon: <UserOutlined />, title: '关于我', link: '/about' }, // 需要删除
@@ -223,7 +223,7 @@
       
       // 修改后：删除"关于我"，添加"个人程序"和"文章"
       const navItems = [
-        { icon: <RobotOutlined />, title: 'AI智能体实验室', link: '/ai-lab' },
+        { icon: <RobotOutlined />, title: 'AI智能体', link: '/ai-lab' },
         { icon: <TrophyOutlined />, title: '信息学竞赛', link: '/competition' },
         { icon: <BookOutlined />, title: '信息技术', link: '/teaching' },
         { icon: <CodeOutlined />, title: '个人程序', link: '/resources' }, // 新增
@@ -276,13 +276,13 @@
       // 首页卡片：删除所有description字段
       // 修改前：
       const navItems = [
-        { icon: <RobotOutlined />, title: 'AI智能体实验室', description: '与AI对话学习', ... },
+        { icon: <RobotOutlined />, title: 'AI智能体', description: '与AI对话学习', ... },
         // ... 其他卡片都有description
       ];
       
       // 修改后：
       const navItems = [
-        { icon: <RobotOutlined />, title: 'AI智能体实验室', ... }, // 无description
+        { icon: <RobotOutlined />, title: 'AI智能体', ... }, // 无description
         // ... 其他卡片都无description
       ];
       

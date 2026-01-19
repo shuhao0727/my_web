@@ -73,11 +73,12 @@ origins = [
     "http://localhost:6608",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:6608",
+    "*",  # 临时允许所有来源用于调试
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],  # 临时允许所有来源
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -98,6 +99,14 @@ try:
     app.include_router(repo_sync_router)
 except ImportError:
     print("⚠️  仓库同步路由导入失败，请检查repo_sync.py文件")
+
+# 新增AI智能体路由（模块化版本）
+try:
+    from routers.ai.ai_main import router as ai_agent_router
+    app.include_router(ai_agent_router, prefix="/api/ai")  # 添加前缀
+    print("✅ AI智能体路由已加载（模块化版本）")
+except ImportError as e:
+    print(f"⚠️  AI智能体路由导入失败: {e}")
 
 # 健康检查
 @app.get("/")

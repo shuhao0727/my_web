@@ -12,7 +12,7 @@ export default function HomePage() {
   const navItems = [
     {
       icon: <RobotOutlined />,
-      title: 'AI智能体实验室',
+      title: 'AI智能体',
       link: '/ai-lab',
       color: '#1890ff',
       external: false,
