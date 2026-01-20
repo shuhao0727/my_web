@@ -58,8 +58,8 @@ class DifyClient(ApiClient):
         Args:
             query: 用户查询
             user: 用户标识
-            conversation_id: 对话ID（可选）
-            inputs: 输入参数（可选）
+            conversation_id: 对话ID（可选，必须是有效的UUID格式）
+            inputs: 输入参数（可选，默认为空字典）
             response_mode: 响应模式（blocking, streaming）
             **kwargs: 其他API参数
             
@@ -72,13 +72,11 @@ class DifyClient(ApiClient):
             "query": query,
             "user": user,
             "response_mode": response_mode,
+            "inputs": inputs if inputs is not None else {}  # 确保inputs字段始终存在
         }
         
         if conversation_id:
             data["conversation_id"] = conversation_id
-        
-        if inputs:
-            data["inputs"] = inputs
         
         # 添加其他参数
         data.update(kwargs)
@@ -98,13 +96,17 @@ class DifyClient(ApiClient):
         Args:
             user_message: 用户消息
             user_id: 用户ID
-            conversation_id: 对话ID（可选）
+            conversation_id: 对话ID（可选，必须是有效的UUID格式）
             **kwargs: 其他参数传递给chat_messages
             
         Returns:
             AI回复文本
         """
         try:
+            # 确保传入inputs参数，如果kwargs中没有则使用空字典
+            if 'inputs' not in kwargs:
+                kwargs['inputs'] = {}
+                
             response = await self.chat_messages(
                 query=user_message,
                 user=user_id,
@@ -138,7 +140,7 @@ class DifyClient(ApiClient):
         Args:
             user_message: 用户消息
             user_id: 用户ID
-            conversation_id: 对话ID（可选）
+            conversation_id: 对话ID（可选，必须是有效的UUID格式）
             **kwargs: 其他参数传递给chat_messages
             
         Yields:
@@ -157,12 +159,15 @@ class DifyClient(ApiClient):
                     "query": user_message,
                     "user": user_id,
                     "response_mode": "streaming",
+                    "inputs": kwargs.get('inputs', {})  # 确保包含inputs字段
                 }
                 
                 if conversation_id:
                     data["conversation_id"] = conversation_id
                 
-                data.update(kwargs)
+                # 移除已经处理的inputs，避免重复
+                kwargs_without_inputs = {k: v for k, v in kwargs.items() if k != 'inputs'}
+                data.update(kwargs_without_inputs)
                 
                 async with client.stream("POST", url, json=data, headers=headers) as response:
                     async for line in response.aiter_lines():

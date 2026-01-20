@@ -125,13 +125,19 @@ async def create_agent(
     if agent_data.api_type not in ['deepseek', 'dify']:
         raise HTTPException(status_code=400, detail="API类型必须是'deepseek'或'dify'")
     
+    # 处理Dify智能体的app_id：如果未提供但api_key以'app-'开头，则从api_key提取
+    app_id = agent_data.app_id
+    if agent_data.api_type == 'dify' and (not app_id or app_id.strip() == ''):
+        if agent_data.api_key and agent_data.api_key.startswith('app-'):
+            app_id = agent_data.api_key.replace('app-', '')
+    
     agent = AiAgent(
         name=agent_data.name,
         api_type=agent_data.api_type,
         api_key=agent_data.api_key,
         base_url=agent_data.base_url,
         model=agent_data.model,
-        app_id=agent_data.app_id,
+        app_id=app_id,
         is_active=agent_data.is_active,
     )
     
@@ -184,6 +190,11 @@ async def update_agent(
     # 更新API密钥（如果提供）
     if agent_data.api_key is not None:
         agent.api_key = agent_data.api_key  # type: ignore
+        
+        # 如果更新了API密钥且是Dify类型，且app_id为空，尝试从新api_key提取
+        if agent.api_type == 'dify' and (not agent.app_id or str(agent.app_id).strip() == ''):
+            if agent_data.api_key.startswith('app-'):
+                agent.app_id = agent_data.api_key.replace('app-', '')  # type: ignore
     
     # 更新基础URL（如果提供）
     if agent_data.base_url is not None:
@@ -270,8 +281,6 @@ async def test_agent_connection(agent_id: int, db: Session = Depends(get_ai_db))
         raise HTTPException(status_code=404, detail="智能体不存在")
     
     try:
-        from services.api_client import ApiClient
-        
         # 检查必要的配置
         api_key = str(agent.api_key) if agent.api_key is not None else ""
         base_url = str(agent.base_url) if agent.base_url is not None else ""
@@ -298,12 +307,31 @@ async def test_agent_connection(agent_id: int, db: Session = Depends(get_ai_db))
                 }
             }
         
-        # 创建API客户端
-        client = ApiClient(
-            api_key=api_key,
-            base_url=base_url,
-            timeout=10  # 测试连接使用较短超时
-        )
+        # 根据智能体类型创建相应的客户端
+        if agent.api_type == 'dify':
+            from services.dify_client import DifyClient
+            # 对于Dify，使用DifyClient，并传入app_id（如果存在）
+            app_id = str(agent.app_id) if agent.app_id else None
+            client = DifyClient(
+                api_key=api_key,
+                base_url=base_url,
+                app_id=app_id,
+                timeout=10
+            )
+        elif agent.api_type == 'deepseek':
+            from services.deepseek_client import DeepSeekClient
+            client = DeepSeekClient(
+                api_key=api_key,
+                base_url=base_url,
+                timeout=10
+            )
+        else:
+            from services.api_client import ApiClient
+            client = ApiClient(
+                api_key=api_key,
+                base_url=base_url,
+                timeout=10
+            )
         
         # 测试连接
         test_result = await client.test_connection()

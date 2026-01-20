@@ -51,12 +51,8 @@ export const testAgentConnection = async (
     };
   }
 
-  if (params.api_type === 'dify' && !params.app_id) {
-    return {
-      success: false,
-      message: 'Dify类需要填写应用ID',
-    };
-  }
+  // 注意：对于Dify类，app_id现在是可选的，系统会自动从API密钥中提取
+  // 如果用户提供了app_id，则使用；如果未提供，系统会尝试从API密钥中提取（以'app-'开头）
 
   try {
     // 如果已有智能体ID，直接测试现有智能体
@@ -112,10 +108,9 @@ export const validateConnectionParams = (params: TestConnectionParams): string |
     return 'DeepSeek类需要填写模型名称';
   }
 
-  if (params.api_type === 'dify' && !params.app_id) {
-    return 'Dify类需要填写应用ID';
-  }
-
+  // 注意：对于Dify类，app_id现在是可选的，系统会自动从API密钥中提取
+  // 不再要求app_id必填
+  
   return null;
 };
 

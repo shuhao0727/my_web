@@ -10,11 +10,7 @@
   ✓ externalDir
 
 ✓ Starting...
-✓ Ready in 1082ms
- GET / 200 in 964ms (compile: 839ms, render: 125ms)
- GET /ai-lab/admin 200 in 809ms (compile: 532ms, render: 278ms)
- GET / 200 in 63ms (compile: 9ms, render: 53ms)
- GET /ai-lab 200 in 100ms (compile: 85ms, render: 15ms)
- GET /ai-lab/admin 200 in 81ms (compile: 13ms, render: 68ms)
- GET /ai-lab 200 in 30ms (compile: 10ms, render: 19ms)
- GET /ai-lab/admin 200 in 40ms (compile: 3ms, render: 37ms)
+✓ Ready in 924ms
+ GET / 200 in 750ms (compile: 632ms, render: 119ms)
+ GET /ai-lab/admin 200 in 590ms (compile: 285ms, render: 305ms)
+ GET /ai-lab/admin 200 in 100ms (compile: 42ms, render: 59ms)

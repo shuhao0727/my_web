@@ -387,12 +387,13 @@ const AgentManagement: React.FC<InternalAgentManagementProps> = ({
               ) : (
                 <Form.Item 
                   label="应用ID" 
-                  required
+                  required={false}
+                  help="可选，如果留空系统将从API密钥自动提取。Dify API密钥格式为'app-xxxxxxxx'，app_id即为'xxxxxxxx'部分。"
                 >
                   <Input
                     value={newAgentForm.app_id}
                     onChange={(e) => setNewAgentForm({ ...newAgentForm, app_id: e.target.value })}
-                    placeholder="请输入Dify应用ID"
+                    placeholder="可选，可留空由系统自动提取"
                   />
                 </Form.Item>
               )}
@@ -425,7 +426,8 @@ const AgentManagement: React.FC<InternalAgentManagementProps> = ({
                 <div className="font-medium mb-1">配置提示：</div>
                 <ul className="list-disc pl-4 space-y-1">
                   <li>确保API密钥和基础URL正确，创建后可点击"测试连接"验证</li>
-                  <li>DeepSeek类需要填写模型名称，Dify类需要填写应用ID</li>
+                  <li>DeepSeek类需要填写模型名称</li>
+                  <li>Dify类的应用ID为可选，如果留空系统将从API密钥自动提取</li>
                   <li>智能体创建后可以随时编辑或禁用</li>
                 </ul>
               </div>
@@ -439,12 +441,12 @@ const AgentManagement: React.FC<InternalAgentManagementProps> = ({
               icon={<ThunderboltOutlined />}
               onClick={handleTestConnection}
               loading={testingConnection}
-              disabled={
-                !newAgentForm.api_key || 
-                !newAgentForm.base_url ||
-                (newAgentForm.api_type === 'deepseek' && !newAgentForm.model) ||
-                (newAgentForm.api_type === 'dify' && !newAgentForm.app_id)
-              }
+                  disabled={
+                    !newAgentForm.api_key || 
+                    !newAgentForm.base_url ||
+                    (newAgentForm.api_type === 'deepseek' && !newAgentForm.model)
+                    // app_id现在是可选的，不再因为缺少app_id而禁用按钮
+                  }
             >
               测试连接
             </Button>
