@@ -1,14 +1,14 @@
-// 智能体类型
+// 智能体类型（简化版，与数据库对齐）
 export interface AiAgent {
   id: number;
   name: string;
-  description?: string;
-  icon: string;
-  api_type: string;
-  api_config?: any;
+  api_type: 'deepseek' | 'dify';  // 只能是这两种类型
+  api_key?: string;
+  base_url?: string;
+  model?: string;      // DeepSeek类使用
+  app_id?: string;     // Dify类使用
   is_active: boolean;
   created_at: string;
-  updated_at?: string;
 }
 
 // 学生类型（与数据库ai_users表对齐）
@@ -37,9 +37,12 @@ export interface DataStats {
 // 创建智能体表单类型
 export interface CreateAgentForm {
   name: string;
-  description: string;
-  icon: string;
-  api_type: string;
+  api_type: 'deepseek' | 'dify';
+  api_key?: string;
+  base_url?: string;
+  model?: string;      // DeepSeek类使用
+  app_id?: string;     // Dify类使用
+  is_active?: boolean;
 }
 
 // 组件属性类型
@@ -62,7 +65,8 @@ export interface AgentManagementProps {
   loading: boolean;
   user: any;
   onRefresh: () => void;
-  onCreateAgent: () => void;
+  onCreateAgent: (form: CreateAgentForm) => void;
+  onEditAgent?: (agentId: number, form: CreateAgentForm) => void;
 }
 
 export interface DataManagementProps {

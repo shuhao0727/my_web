@@ -125,25 +125,69 @@ export default function AiLabAdminPage() {
     try {
       const response = await aiApi.agent.getAgents(false);
       if (response.success) {
-        setAdminAgents(response.agents);
+        // 转换API响应到新的AiAgent类型
+        const agents: AiAgent[] = response.agents.map((agent: any) => ({
+          id: agent.id,
+          name: agent.name,
+          api_type: agent.api_type,
+          api_key: agent.api_key,
+          base_url: agent.base_url,
+          model: agent.model,
+          app_id: agent.app_id,
+          is_active: agent.is_active,
+          created_at: agent.created_at,
+        }));
+        setAdminAgents(agents);
       } else {
-        // 使用模拟数据
+        // 使用符合新结构的模拟数据
         const mockAgents: AiAgent[] = [
-          { id: 1, name: '数学辅导助手', description: '解答数学问题', icon: '🧮', api_type: 'mock', is_active: true, created_at: '2026-01-18' },
-          { id: 2, name: '代码审查专家', description: '审查代码风格', icon: '💻', api_type: 'mock', is_active: true, created_at: '2026-01-18' },
-          { id: 3, name: '算法竞赛导师', description: '讲解竞赛算法', icon: '⚡', api_type: 'mock', is_active: false, created_at: '2026-01-17' },
-          { id: 4, name: '学习规划顾问', description: '制定学习计划', icon: '📚', api_type: 'mock', is_active: true, created_at: '2026-01-16' },
+          { 
+            id: 1, 
+            name: '数学辅导助手', 
+            api_type: 'deepseek', 
+            api_key: 'sk-xxx',
+            base_url: 'https://api.deepseek.com',
+            model: 'deepseek-chat',
+            is_active: true, 
+            created_at: '2026-01-18T07:54:57' 
+          },
+          { 
+            id: 2, 
+            name: '代码审查专家', 
+            api_type: 'dify', 
+            api_key: 'app-xxx',
+            base_url: 'http://localhost:6606/v1',
+            app_id: 'code-review-app',
+            is_active: true, 
+            created_at: '2026-01-18T08:12:33' 
+          },
         ];
         setAdminAgents(mockAgents);
       }
     } catch (error) {
       console.error('加载管理智能体失败:', error);
-      // 使用模拟数据
+      // 使用符合新结构的模拟数据
       const mockAgents: AiAgent[] = [
-        { id: 1, name: '数学辅导助手', description: '解答数学问题', icon: '🧮', api_type: 'mock', is_active: true, created_at: '2026-01-18' },
-        { id: 2, name: '代码审查专家', description: '审查代码风格', icon: '💻', api_type: 'mock', is_active: true, created_at: '2026-01-18' },
-        { id: 3, name: '算法竞赛导师', description: '讲解竞赛算法', icon: '⚡', api_type: 'mock', is_active: false, created_at: '2026-01-17' },
-        { id: 4, name: '学习规划顾问', description: '制定学习计划', icon: '📚', api_type: 'mock', is_active: true, created_at: '2026-01-16' },
+        { 
+          id: 1, 
+          name: '数学辅导助手', 
+          api_type: 'deepseek', 
+          api_key: 'sk-xxx',
+          base_url: 'https://api.deepseek.com',
+          model: 'deepseek-chat',
+          is_active: true, 
+          created_at: '2026-01-18T07:54:57' 
+        },
+        { 
+          id: 2, 
+          name: '代码审查专家', 
+          api_type: 'dify', 
+          api_key: 'app-xxx',
+          base_url: 'http://localhost:6606/v1',
+          app_id: 'code-review-app',
+          is_active: true, 
+          created_at: '2026-01-18T08:12:33' 
+        },
       ];
       setAdminAgents(mockAgents);
     } finally {
@@ -169,14 +213,39 @@ export default function AiLabAdminPage() {
   };
 
   // 创建新智能体
-  const handleCreateAgent = async () => {
-    // 注意：这里我们不再使用newAgentForm状态，因为已经移到了AgentManagement组件内部
-    // 实际上，我们需要将创建智能体的逻辑移到AgentManagement组件中，或者通过回调传递数据。
-    // 但为了保持原有功能，我们先留空，后续在AgentManagement组件中实现。
-    console.log('创建智能体');
-    // 这里我们调用API创建智能体，然后刷新列表
-    // 由于表单在子组件中，我们需要将表单数据通过回调传递上来，或者将创建逻辑放到子组件中。
-    // 为了简化，我们先不实现，等后续完善。
+  const handleCreateAgent = async (form: any) => {
+    try {
+      console.log('创建智能体:', form);
+      // 调用API创建智能体
+      const response = await aiApi.agent.createAgent(form);
+      if (response.success) {
+        message.success('智能体创建成功');
+        await loadAdminAgents();
+      } else {
+        message.error('创建智能体失败: ' + (response.message || '未知错误'));
+      }
+    } catch (error) {
+      console.error('创建智能体失败:', error);
+      message.error('创建智能体失败，请检查网络连接');
+    }
+  };
+
+  // 编辑智能体
+  const handleEditAgent = async (agentId: number, form: any) => {
+    try {
+      console.log('编辑智能体:', agentId, form);
+      // 调用API更新智能体
+      const response = await aiApi.agent.updateAgent(agentId, form);
+      if (response.success) {
+        message.success('智能体更新成功');
+        await loadAdminAgents();
+      } else {
+        message.error('更新智能体失败: ' + (response.message || '未知错误'));
+      }
+    } catch (error) {
+      console.error('更新智能体失败:', error);
+      message.error('更新智能体失败，请检查网络连接');
+    }
   };
 
   // 更新智能体状态
@@ -244,6 +313,7 @@ export default function AiLabAdminPage() {
             user={user}
             onRefresh={loadAdminAgents}
             onCreateAgent={handleCreateAgent}
+            onEditAgent={handleEditAgent}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             onToggleAgentStatus={handleToggleAgentStatus}

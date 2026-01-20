@@ -147,7 +147,7 @@ export const userManagementApi = {
 // AI智能体API
 export const aiAgentApi = {
   // 获取所有智能体
-  getAgents: (activeOnly = true, search?: string, apiType?: string) => {
+  getAgents: (activeOnly = false, search?: string, apiType?: string) => {
     let url = `/api/ai/agents?active_only=${activeOnly}`;
     if (search) url += `&search=${encodeURIComponent(search)}`;
     if (apiType) url += `&api_type=${encodeURIComponent(apiType)}`;
@@ -161,10 +161,11 @@ export const aiAgentApi = {
   // 创建智能体（管理员）
   createAgent: (data: {
     name: string;
-    description?: string;
-    icon?: string;
-    api_type?: string;
-    api_config?: any;
+    api_type: string;  // 'deepseek' or 'dify'
+    api_key?: string;
+    base_url?: string;
+    model?: string;
+    app_id?: string;
     is_active?: boolean;
   }) => 
     request<{ success: boolean; agent: any; message: string }>('/api/ai/agents', {
@@ -177,10 +178,11 @@ export const aiAgentApi = {
     agentId: number,
     data: {
       name?: string;
-      description?: string;
-      icon?: string;
       api_type?: string;
-      api_config?: any;
+      api_key?: string;
+      base_url?: string;
+      model?: string;
+      app_id?: string;
       is_active?: boolean;
     }
   ) => 
@@ -209,6 +211,17 @@ export const aiAgentApi = {
   // 获取智能体统计摘要
   getAgentsSummary: () =>
     request<{ success: boolean; summary: any }>('/api/ai/agents/stats/summary'),
+
+  // 测试智能体连接
+  testAgentConnection: (agentId: number) =>
+    request<{
+      success: boolean;
+      message: string;
+      test_result?: any;
+      agent: { id: number; name: string; api_type: string };
+    }>(`/api/ai/agents/${agentId}/test-connection`, {
+      method: 'POST',
+    }),
 };
 
 // 对话API

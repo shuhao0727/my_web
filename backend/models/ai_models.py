@@ -28,13 +28,13 @@ class AiAgent(AiBase):
     
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False, index=True)                  # 智能体名称
-    description = Column(Text)                                              # 智能体描述
-    icon = Column(String(20), default="🤖")                                 # 图标
-    api_type = Column(String(50), nullable=False)                           # API类型（如：openai, mock, custom）
-    api_config = Column(JSON)                                               # API配置（JSON格式）
+    api_type = Column(String(20), nullable=False)                           # API类型：deepseek 或 dify
+    api_key = Column(String(255))                                           # API密钥
+    base_url = Column(String(255))                                          # 基础URL
+    model = Column(String(100))                                             # 模型名称（DeepSeek类用）
+    app_id = Column(String(100))                                            # 应用ID（Dify类用）
     is_active = Column(Boolean, default=True, index=True)                  # 是否可用（admin可控制）
     created_at = Column(DateTime, server_default=func.now())               # 创建时间
-    updated_at = Column(DateTime, onupdate=func.now())                     # 更新时间
     
     # 关系
     conversations = relationship("AiConversation", back_populates="agent", cascade="all, delete-orphan")

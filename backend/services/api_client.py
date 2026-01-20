@@ -201,3 +201,6 @@ class ApiCallRecorder:
             "response_tokens": response_tokens,
             "total_tokens": request_tokens + response_tokens
         }
+
+# 向后兼容：APIClient 是 ApiClient 的别名
+APIClient = ApiClient

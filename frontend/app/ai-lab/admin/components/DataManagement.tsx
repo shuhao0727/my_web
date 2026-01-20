@@ -50,10 +50,14 @@ const DataManagement: React.FC<DataManagementProps> = ({
                   <div key={agent.id} className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <Badge count={index + 1} />
-                      <div className="text-lg">{agent.icon}</div>
+                      <div className="text-lg">
+                        {agent.api_type === 'deepseek' ? '🤖' : '🔧'}
+                      </div>
                       <div>
                         <div className="font-medium">{agent.name}</div>
-                        <div className="text-xs text-gray-500">{agent.api_type}</div>
+                        <div className="text-xs text-gray-500">
+                          {agent.api_type === 'deepseek' ? 'DeepSeek类' : 'Dify类'}
+                        </div>
                       </div>
                     </div>
                     <div className="text-gray-500">--</div>

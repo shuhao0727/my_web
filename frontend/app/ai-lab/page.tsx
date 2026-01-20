@@ -49,6 +49,7 @@ export default function AiLabPage() {
       setUser(userData);
       setIsLoggedIn(true);
       loadAiAgents();
+      // 初始加载所有对话
       loadUserConversations(userData.id);
     }
     setLoading(false);
@@ -58,7 +59,8 @@ export default function AiLabPage() {
   const loadAiAgents = async () => {
     setLoadingAgents(true);
     try {
-      const response = await aiApi.agent.getAgents();
+      // 只获取活跃的智能体，用户只能看到活跃的智能体
+      const response = await aiApi.agent.getAgents(true);
       if (response.success && response.agents.length > 0) {
         setAiAgents(response.agents);
         setSelectedAgent(response.agents[0]);
@@ -83,16 +85,16 @@ export default function AiLabPage() {
         { id: 4, name: '学习规划顾问', description: '制定学习计划', icon: '📚', api_type: 'mock', is_active: true },
       ];
       setAiAgents(defaultAgents);
-      setSelectedAgent(defaultAgents[0]);
+        setSelectedAgent(defaultAgents[0]);
     } finally {
       setLoadingAgents(false);
     }
   };
 
-  // 加载用户对话
-  const loadUserConversations = async (userId: number) => {
+  // 加载用户对话，可选按智能体筛选
+  const loadUserConversations = async (userId: number, agentId?: number) => {
     try {
-      const response = await aiApi.conversation.getConversations(userId);
+      const response = await aiApi.conversation.getConversations(userId, agentId);
       if (response.success) {
         setConversations(response.conversations);
       }
@@ -117,6 +119,34 @@ export default function AiLabPage() {
     router.push('/ai-lab/login');
   };
 
+  // 处理选择智能体
+  const handleSelectAgent = async (agent: AiAgent) => {
+    // 保存当前智能体
+    const previousAgent = selectedAgent;
+    setSelectedAgent(agent);
+    
+    // 加载新智能体的对话
+    if (user) {
+      await loadUserConversations(user.id, agent.id);
+    }
+    
+    // 检查当前选中的对话是否属于新智能体
+    // 如果当前对话属于之前的智能体，或者不属于任何智能体，则清空选中的对话和消息
+    if (selectedConversation) {
+      const conversationBelongsToNewAgent = conversations.some(
+        conv => conv.id === selectedConversation.id && conv.ai_agent === agent.name
+      );
+      
+      if (!conversationBelongsToNewAgent) {
+        setSelectedConversation(null);
+        setMessages([]);
+      }
+    } else {
+      // 如果没有选中的对话，清空消息
+      setMessages([]);
+    }
+  };
+
   // 处理发送消息
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || !selectedAgent || !user) return;
@@ -125,7 +155,7 @@ export default function AiLabPage() {
       id: Date.now().toString(),
       role: 'user',
       content: inputMessage,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: formatTimeForDisplay(new Date()),
     };
 
     const newMessages = [...messages, userMessage];
@@ -142,16 +172,17 @@ export default function AiLabPage() {
       );
 
       if (response.success) {
-        // 添加AI回复
-        const aiMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: response.messages[1]?.content || `收到您的消息："${inputMessage}"。`,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          tokens: response.messages[1]?.tokens,
-        };
-
-        setMessages([...newMessages, aiMessage]);
+        // 使用API返回的全部消息来更新前端消息状态，确保一致性
+        // API返回的消息按ID升序排列（最旧的在最前），直接使用即可（最新的在底部）
+        const updatedMessages: Message[] = response.messages.map((msg: any) => ({
+          id: msg.id.toString(),
+          role: msg.role,
+          content: msg.content,
+          timestamp: formatTimeForDisplay(msg.created_at),
+          tokens: msg.tokens,
+        }));
+        
+        setMessages(updatedMessages);
         
         // 如果这是新对话，添加到对话列表
         if (!selectedConversation && response.conversation) {
@@ -161,14 +192,14 @@ export default function AiLabPage() {
             title: response.conversation.title || `与${selectedAgent.name}的对话`,
             ai_agent: selectedAgent.name,
             start_time: new Date().toISOString(),
-            total_messages: 2,
-            total_tokens: (response.messages[0]?.tokens || 0) + (response.messages[1]?.tokens || 0),
+            total_messages: response.conversation.total_messages,
+            total_tokens: response.conversation.total_tokens,
           };
           setConversations([newConv, ...conversations]);
           setSelectedConversation(newConv);
         } else {
           // 刷新对话列表
-          loadUserConversations(user.id);
+          loadUserConversations(user.id, selectedAgent.id);
         }
       }
     } catch (error) {
@@ -178,7 +209,7 @@ export default function AiLabPage() {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: `收到您的消息："${inputMessage}"。作为${selectedAgent.name}，我会尽力帮助您。`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        timestamp: formatTimeForDisplay(new Date()),
       };
       setMessages([...newMessages, aiMessage]);
     } finally {
@@ -186,16 +217,125 @@ export default function AiLabPage() {
     }
   };
 
+  // 调试函数：输出时间解析的详细信息
+  const debugTimeParse = (input: string): Date => {
+    console.log('调试时间解析，输入:', input);
+    
+    // 尝试多种解析方式
+    let parsedDate: Date | null = null;
+    
+    // 方式1: 如果包含空格，替换为T并添加Z（假设是UTC时间）
+    if (input.includes(' ')) {
+      const isoString = input.replace(' ', 'T') + 'Z';
+      parsedDate = new Date(isoString);
+      console.log('方式1 - ISO字符串:', isoString, '解析结果:', parsedDate.toString());
+    }
+    
+    // 方式2: 直接作为Date构造参数
+    if (!parsedDate || isNaN(parsedDate.getTime())) {
+      parsedDate = new Date(input);
+      console.log('方式2 - 直接解析结果:', parsedDate.toString());
+    }
+    
+    // 方式3: 正则表达式解析（之前的逻辑）
+    if (!parsedDate || isNaN(parsedDate.getTime())) {
+      const match = input.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/);
+      if (match) {
+        const [, year, month, day, hour, minute, second] = match;
+        // 注意：月份从0开始（0=一月）
+        const utcDate = new Date(Date.UTC(
+          parseInt(year, 10),
+          parseInt(month, 10) - 1,
+          parseInt(day, 10),
+          parseInt(hour, 10),
+          parseInt(minute, 10),
+          parseInt(second, 10)
+        ));
+        parsedDate = utcDate;
+        console.log('方式3 - UTC解析结果:', parsedDate.toString());
+      }
+    }
+    
+    // 如果所有解析都失败，使用当前时间
+    if (!parsedDate || isNaN(parsedDate.getTime())) {
+      parsedDate = new Date();
+      console.log('方式4 - 使用当前时间:', parsedDate.toString());
+    }
+    
+    console.log('最终解析结果:', parsedDate.toString(), '本地时间:', parsedDate.toLocaleString('zh-CN'));
+    return parsedDate;
+  };
+
+  // 格式化时间显示，确保显示正确的本地时间（亚洲/上海时区）
+  const formatTimeForDisplay = (dateInput: Date | string): string => {
+    let date: Date;
+    
+    if (typeof dateInput === 'string') {
+      // 从API返回的字符串，需要解析为UTC时间
+      let isoString = dateInput.trim();
+      
+      // 如果已经是ISO格式（包含T），确保有Z表示UTC
+      if (isoString.includes('T')) {
+        if (!isoString.endsWith('Z')) {
+          isoString += 'Z';
+        }
+      } else {
+        // 假设是"YYYY-MM-DD HH:MM:SS"格式，转换为ISO格式并添加Z表示UTC
+        isoString = isoString.replace(' ', 'T') + 'Z';
+      }
+      
+      date = new Date(isoString);
+      
+      // 调试信息
+      if (process.env.NODE_ENV === 'development') {
+        console.log('时间解析调试:', {
+          输入: dateInput,
+          ISO字符串: isoString,
+          解析结果: date.toString(),
+          UTC时间: date.toUTCString(),
+          本地时间: date.toLocaleString('zh-CN'),
+          时区偏移: date.getTimezoneOffset(),
+          getUTCHours: date.getUTCHours(),
+          getHours: date.getHours()
+        });
+      }
+    } else {
+      // 用户消息的Date对象，直接使用（本地时间）
+      date = dateInput;
+    }
+    
+    // 使用亚洲/上海时区显示时间，确保正确转换UTC到本地时间
+    const formattedTime = date.toLocaleTimeString('zh-CN', { 
+      hour12: false,
+      hour: '2-digit', 
+      minute: '2-digit',
+      timeZone: 'Asia/Shanghai'
+    });
+    
+    // 调试：输出格式化结果
+    if (process.env.NODE_ENV === 'development') {
+      console.log('时间格式化:', {
+        输入: dateInput,
+        格式化结果: formattedTime,
+        原始日期: date.toString(),
+        使用时区: 'Asia/Shanghai'
+      });
+    }
+    
+    return formattedTime;
+  };
+
   // 加载对话消息
   const loadConversationMessages = async (conversationId: number) => {
     try {
       const response = await aiApi.conversation.getConversation(conversationId, true);
       if (response.success && response.conversation.messages) {
+        // API返回的消息按ID升序排列（最旧的在最前），直接使用即可（最新的在底部）
         const loadedMessages: Message[] = response.conversation.messages.map((msg: any) => ({
           id: msg.id.toString(),
           role: msg.role,
           content: msg.content,
-          timestamp: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          timestamp: formatTimeForDisplay(msg.created_at),
           tokens: msg.tokens,
         }));
         setMessages(loadedMessages);
@@ -257,7 +397,7 @@ export default function AiLabPage() {
             selectedAgent={selectedAgent}
             selectedConversation={selectedConversation}
             searchQuery={searchQuery}
-            onSelectAgent={setSelectedAgent}
+            onSelectAgent={handleSelectAgent}
             onSelectConversation={handleSelectConversation}
             onNewConversation={handleNewConversation}
             onSearchChange={setSearchQuery}

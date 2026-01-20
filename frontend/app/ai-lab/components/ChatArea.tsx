@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   SendOutlined, UserOutlined, LoadingOutlined,
   MessageOutlined
@@ -61,7 +63,7 @@ export default function ChatArea({
         className="h-full"
       >
         {/* 消息区域 */}
-        <div className="h-[500px] overflow-y-auto p-4 bg-gray-50 rounded-lg mb-4">
+        <div className="h-[650px] overflow-y-auto p-4 bg-gray-50 rounded-lg mb-4">
           {messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-gray-400">
               <MessageOutlined className="text-5xl mb-4" />
@@ -101,9 +103,48 @@ export default function ChatArea({
                       {message.timestamp}
                     </Text>
                   </div>
-                  <Paragraph className="mb-0 whitespace-pre-wrap">
-                    {message.content}
-                  </Paragraph>
+                  <div className="markdown-content">
+                    {message.role === 'assistant' ? (
+                      <ReactMarkdown 
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          h1: (props: any) => <h1 className="text-2xl font-bold mt-4 mb-2" {...props} />,
+                          h2: (props: any) => <h2 className="text-xl font-bold mt-3 mb-2" {...props} />,
+                          h3: (props: any) => <h3 className="text-lg font-bold mt-2 mb-1" {...props} />,
+                          h4: (props: any) => <h4 className="text-base font-bold mt-2 mb-1" {...props} />,
+                          h5: (props: any) => <h5 className="text-sm font-bold mt-1 mb-1" {...props} />,
+                          h6: (props: any) => <h6 className="text-xs font-bold mt-1 mb-1" {...props} />,
+                          p: (props: any) => <p className="mb-2" {...props} />,
+                          ul: (props: any) => <ul className="list-disc pl-5 mb-2" {...props} />,
+                          ol: (props: any) => <ol className="list-decimal pl-5 mb-2" {...props} />,
+                          li: (props: any) => <li className="mb-1" {...props} />,
+                          blockquote: (props: any) => <blockquote className="border-l-4 border-gray-300 pl-3 italic my-2" {...props} />,
+                          code: (props: any) => {
+                            const { inline, ...restProps } = props;
+                            return inline ? 
+                              <code className="bg-gray-100 rounded px-1 py-0.5 text-sm font-mono" {...restProps} /> : 
+                              <code className="block bg-gray-100 rounded p-2 my-2 text-sm font-mono overflow-x-auto" {...restProps} />;
+                          },
+                          pre: (props: any) => <pre className="bg-gray-100 rounded p-2 my-2 overflow-x-auto" {...props} />,
+                          a: (props: any) => <a className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer" {...props} />,
+                          table: (props: any) => <table className="border-collapse border border-gray-300 my-2" {...props} />,
+                          thead: (props: any) => <thead className="bg-gray-100" {...props} />,
+                          tbody: (props: any) => <tbody {...props} />,
+                          tr: (props: any) => <tr className="border-b border-gray-300" {...props} />,
+                          th: (props: any) => <th className="border border-gray-300 px-2 py-1 font-bold" {...props} />,
+                          td: (props: any) => <td className="border border-gray-300 px-2 py-1" {...props} />,
+                          strong: (props: any) => <strong className="font-bold" {...props} />,
+                          em: (props: any) => <em className="italic" {...props} />,
+                        }}
+                      >
+                        {message.content}
+                      </ReactMarkdown>
+                    ) : (
+                      <Paragraph className="mb-0 whitespace-pre-wrap">
+                        {message.content}
+                      </Paragraph>
+                    )}
+                  </div>
                   {message.tokens && (
                     <div className="text-xs text-gray-500 mt-2">
                       消耗token: {message.tokens}

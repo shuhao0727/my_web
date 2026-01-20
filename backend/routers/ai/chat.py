@@ -1,13 +1,16 @@
 """
 AI智能体 - 聊天路由
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import uuid
 from datetime import datetime
 import json
 import logging
+import os
+import re
+from pydantic import BaseModel
 
 from config.database import get_ai_db
 from models.ai_models import AiConversation, AiMessage, AiAgent, AiUser
@@ -15,26 +18,55 @@ from services.deepseek_client import DeepSeekClient
 from services.dify_client import DifyClient
 from services.api_client import ApiCallRecorder
 
+# 导入simple_ai_chat模块
+from services.simple_ai_chat import chat_with_agent_id
+
+# 请求/响应模型
+class ChatRequest(BaseModel):
+    user_id: int
+    agent_id: int
+    message: str
+    conversation_id: Optional[int] = None
+
+class ChatResponse(BaseModel):
+    success: bool
+    conversation: dict
+    messages: List[dict]
+    message: str
+
 logger = logging.getLogger(__name__)
+
+def markdown_to_html(text: str) -> str:
+    """将Markdown转换为HTML（基本转换）"""
+    if not text:
+        return text
+    
+    # 这里我们保留Markdown，由前端react-markdown库进行渲染
+    # 所以直接返回原始文本
+    return text
 
 router = APIRouter()
 
-@router.post("/")
+@router.post("/", response_model=ChatResponse)
 async def chat(
-    user_id: int,
-    agent_id: int,
-    message: str,
-    conversation_id: Optional[int] = None,
+    chat_request: ChatRequest,
     db: Session = Depends(get_ai_db)
 ):
     """与AI智能体聊天"""
+    # 从请求中获取参数
+    user_id = chat_request.user_id
+    agent_id = chat_request.agent_id
+    message = chat_request.message
+    conversation_id = chat_request.conversation_id
+    
     # 检查用户是否存在
     user = db.query(AiUser).filter(AiUser.id == user_id).first()
     if user is None:
         raise HTTPException(status_code=404, detail="用户不存在")
     
     # 检查智能体是否存在且活跃
-    agent = db.query(AiAgent).filter(AiAgent.id == agent_id, AiAgent.is_active == True).first()
+    from sqlalchemy import true
+    agent = db.query(AiAgent).filter(AiAgent.id == agent_id, AiAgent.is_active.is_(true())).first()
     if agent is None:
         raise HTTPException(status_code=404, detail="智能体不存在或不可用")
     
@@ -80,59 +112,10 @@ async def chat(
     start_time = datetime.now()
     
     try:
-        if agent.api_type == "mock":
-            # 模拟回复
-            ai_response = f"你好，我是{agent.name}！我收到你的消息：'{message}'。我正在思考如何回答..."
-        elif agent.api_type == "echo":
-            # 回声回复
-            ai_response = f"你说了：{message}"
-        elif agent.api_type == "deepseek":
-            # 使用DeepSeek API
-            api_config = agent.api_config or {}
-            client = DeepSeekClient(
-                api_key=api_config.get("api_key", ""),
-                base_url=api_config.get("base_url", "https://api.deepseek.com"),
-                model=api_config.get("model", "deepseek-chat"),
-                temperature=api_config.get("temperature", 0.7),
-                max_tokens=api_config.get("max_tokens", 2000),
-                timeout=api_config.get("timeout", 30)
-            )
-            # 构建历史消息（如果有的话）
-            history = []
-            if conversation:
-                # 获取最近的历史消息（最多10条）
-                prev_messages = db.query(AiMessage).filter(
-                    AiMessage.conversation_id == conversation.id
-                ).order_by(AiMessage.created_at.desc()).limit(10).all()
-                # 反转顺序，从旧到新
-                for msg in reversed(prev_messages):
-                    history.append({
-                        "role": msg.role,
-                        "content": msg.content
-                    })
-            # 调用API
-            ai_response = await client.chat(
-                user_message=message,
-                system_prompt=f"你是{agent.name}，{agent.description or '一个AI助手'}",
-                conversation_history=history
-            )
-        elif agent.api_type == "dify":
-            # 使用Dify API
-            api_config = agent.api_config or {}
-            client = DifyClient(
-                api_key=api_config.get("api_key", ""),
-                base_url=api_config.get("base_url", "http://wangsh.cn:6606/v1"),
-                app_id=api_config.get("app_id"),
-                timeout=api_config.get("timeout", 30)
-            )
-            # Dify需要用户标识，这里使用用户ID
-            ai_response = await client.chat(
-                user_message=message,
-                user_id=str(user_id),
-                conversation_id=str(conversation.session_id) if conversation else None
-            )
-        else:
-            ai_response = f"我是{agent.name}，收到你的消息。"
+        # 调用simple_ai_chat模块中的chat_with_agent_id函数
+        # 数据库路径：znt.db 位于backend目录下
+        db_path = os.path.join(os.path.dirname(__file__), "../../znt.db")
+        ai_response = await chat_with_agent_id(db_path, agent_id, message, user_id)
         
         # 记录API调用
         end_time = datetime.now()
@@ -166,19 +149,24 @@ async def chat(
             error_message=str(e)
         )
     
-    # 保存AI回复
+    # 保留Markdown格式，前端使用react-markdown渲染
+    # 使用markdown_to_html函数（目前直接返回原始文本）
+    processed_ai_response = markdown_to_html(ai_response)
+    
+    # 保存AI回复（保留Markdown格式）
     ai_message = AiMessage(
         conversation_id=conversation.id,
         role="assistant",
-        content=ai_response,
-        tokens=len(ai_response) // 4,
+        content=processed_ai_response,
+        tokens=len(processed_ai_response) // 4,
     )
     db.add(ai_message)
     
     # 更新对话统计
-    conversation.total_messages += 2
-    conversation.total_tokens += (user_message.tokens or 0) + (ai_message.tokens or 0)
-    conversation.end_time = datetime.now()
+    # 使用setattr避免Pylance类型检查错误
+    setattr(conversation, 'total_messages', conversation.total_messages + 2)
+    setattr(conversation, 'total_tokens', (conversation.total_tokens or 0) + (user_message.tokens or 0) + (ai_message.tokens or 0))
+    setattr(conversation, 'end_time', datetime.now())
     
     # 如果需要，可以保存API调用记录到数据库（这里仅打印日志）
     if api_call_record:
@@ -186,10 +174,10 @@ async def chat(
     
     db.commit()
     
-    # 获取对话中的所有消息
+    # 获取对话中的所有消息，按ID升序排列（最旧的在最前） - ID自增，能准确反映插入顺序
     messages = db.query(AiMessage).filter(
         AiMessage.conversation_id == conversation.id
-    ).order_by(AiMessage.created_at).all()
+    ).order_by(AiMessage.id.asc()).all()
     
     return {
         "success": True,
@@ -222,15 +210,12 @@ async def chat(
 
 @router.post("/stream")
 async def chat_stream(
-    user_id: int,
-    agent_id: int,
-    message: str,
-    conversation_id: Optional[int] = None,
+    chat_request: ChatRequest,
     db: Session = Depends(get_ai_db)
 ):
     """流式聊天（简化版本，返回完整响应）"""
     # 使用非流式聊天接口
-    result = await chat(user_id, agent_id, message, conversation_id, db)
+    result = await chat(chat_request, db)
     
     # 返回相同格式，标记为流式
     return {
@@ -257,34 +242,42 @@ async def test_agent_api(
     test_status = "unknown"
     
     try:
-        if agent.api_type == "mock":
+        if str(agent.api_type) == "mock":
             test_response = f"模拟回复：我是{agent.name}，已收到测试消息"
             test_status = "success"
-        elif agent.api_type == "echo":
+        elif str(agent.api_type) == "echo":
             test_response = f"回声回复：{test_message}"
             test_status = "success"
-        elif agent.api_type == "deepseek":
+        elif str(agent.api_type) == "deepseek":
             # 测试DeepSeek API
-            api_config = agent.api_config or {}
+            # 获取字段值，确保是字符串类型
+            api_key = str(agent.api_key) if agent.api_key is not None else ""
+            base_url = str(agent.base_url) if agent.base_url is not None else "https://api.deepseek.com"
+            model = str(agent.model) if agent.model is not None else "deepseek-chat"
+            
             client = DeepSeekClient(
-                api_key=api_config.get("api_key", ""),
-                base_url=api_config.get("base_url", "https://api.deepseek.com"),
-                model=api_config.get("model", "deepseek-chat"),
-                temperature=api_config.get("temperature", 0.7),
-                max_tokens=api_config.get("max_tokens", 2000),
-                timeout=api_config.get("timeout", 30)
+                api_key=api_key,
+                base_url=base_url,
+                model=model,
+                temperature=0.7,
+                max_tokens=2000,
+                timeout=30
             )
             test_result = await client.test_connection()
             test_response = test_result.get("test_response", "连接测试完成")
             test_status = "success" if test_result.get("success") else "failed"
-        elif agent.api_type == "dify":
+        elif str(agent.api_type) == "dify":
             # 测试Dify API
-            api_config = agent.api_config or {}
+            # 获取字段值，确保是字符串类型
+            api_key = str(agent.api_key) if agent.api_key is not None else ""
+            base_url = str(agent.base_url) if agent.base_url is not None else "http://wangsh.cn:6606/v1"
+            app_id = str(agent.app_id) if agent.app_id is not None else None
+            
             client = DifyClient(
-                api_key=api_config.get("api_key", ""),
-                base_url=api_config.get("base_url", "http://wangsh.cn:6606/v1"),
-                app_id=api_config.get("app_id"),
-                timeout=api_config.get("timeout", 30)
+                api_key=api_key,
+                base_url=base_url,
+                app_id=app_id,
+                timeout=30
             )
             test_result = await client.test_connection()
             test_response = test_result.get("test_response", "连接测试完成")
