@@ -324,8 +324,6 @@ export default function AiLabAdminPage() {
       case 'data':
         return (
           <DataManagement 
-            dataStats={dataStats}
-            adminAgents={adminAgents}
             user={user}
           />
         );

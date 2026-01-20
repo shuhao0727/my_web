@@ -26,25 +26,25 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
     {
       key: 'data',
       icon: <DatabaseOutlined />,
-      label: '智能体数据管理',
+      label: '学生对话记录',
     },
   ];
 
   return (
-    <Layout className="h-screen flex flex-row" suppressHydrationWarning translate="no">
+    <Layout className="h-screen flex flex-row" suppressHydrationWarning data-no-translate>
       <Sider
         theme="light"
         width={250}
         className="border-r border-gray-200 bg-white flex-shrink-0 h-full"
         suppressHydrationWarning
       >
-        <div className="h-full flex flex-col" translate="no">
+        <div className="h-full flex flex-col" data-no-translate>
           <div className="p-4 flex-shrink-0">
             <div className="flex items-center space-x-3 mb-6">
               <RobotOutlined className="text-2xl text-blue-600" />
               <div>
-                <div className="font-bold text-lg" translate="no">AI智能体管理</div>
-                <div className="text-xs text-gray-500" translate="no">管理员面板</div>
+                <div className="font-bold text-lg" data-no-translate>AI智能体管理</div>
+                <div className="text-xs text-gray-500" data-no-translate>管理员面板</div>
               </div>
             </div>
             
@@ -59,7 +59,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
           </div>
           
           <div className="mt-auto p-4 border-t border-gray-200 flex-shrink-0">
-            <div className="text-center text-gray-500 text-sm" translate="no">
+            <div className="text-center text-gray-500 text-sm" data-no-translate>
               <div>当前用户: {user?.username}</div>
               <div className="text-xs mt-1">管理员权限</div>
             </div>

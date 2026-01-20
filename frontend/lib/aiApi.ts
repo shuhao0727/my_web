@@ -333,29 +333,100 @@ export const chatApi = {
     ),
 };
 
-// 统计API
+// 统计API（兼容旧版，实际调用新的数据API）
 export const statsApi = {
   // 获取系统总体统计摘要
   getSystemSummary: () =>
-    request<{ success: boolean; summary: any }>('/api/ai/stats/summary'),
+    request<{ success: boolean; stats: any }>('/api/ai/data/stats'),
 
-  // 获取使用趋势
+  // 获取使用趋势（暂不支持，返回空数据）
   getUsageTrend: (days: number = 7) =>
-    request<{ success: boolean; trend: any }>(`/api/ai/stats/usage/trend?days=${days}`),
+    Promise.resolve({
+      success: true,
+      trend: {
+        labels: [],
+        data: []
+      }
+    }),
 
   // 获取智能体使用排名
   getAgentsRanking: (limit: number = 10) =>
-    request<{ success: boolean; ranking: any[] }>(`/api/ai/stats/agents/ranking?limit=${limit}`),
+    request<{ success: boolean; ranking: any[] }>(`/api/ai/data/agents/ranking?limit=${limit}`),
 
-  // 获取用户使用排名
+  // 获取用户使用排名（暂不支持，返回空数据）
   getUsersRanking: (limit: number = 10) =>
-    request<{ success: boolean; ranking: any[] }>(`/api/ai/stats/users/ranking?limit=${limit}`),
+    Promise.resolve({
+      success: true,
+      ranking: []
+    }),
 
-  // 获取用户详细统计
+  // 获取用户详细统计（暂不支持，返回空数据）
   getUserDetailedStats: (userId: number) =>
-    request<{ success: boolean; user: any; stats: any; agent_breakdown: any[]; usage_by_hour: any[] }>(
-      `/api/ai/stats/detailed/${userId}`
-    ),
+    Promise.resolve({
+      success: true,
+      user: { id: userId },
+      stats: {},
+      agent_breakdown: [],
+      usage_by_hour: []
+    }),
+};
+
+// 数据管理API（新增）
+export const dataApi = {
+  // 获取学生使用统计列表
+  getStudentStats: (
+    class_name?: string,
+    search?: string,
+    page: number = 1,
+    page_size: number = 20
+  ) => {
+    let url = `/api/ai/data/students?page=${page}&page_size=${page_size}`;
+    if (class_name) url += `&class_name=${encodeURIComponent(class_name)}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+    return request<{
+      success: boolean;
+      students: any[];
+      total: number;
+      page: number;
+      page_size: number;
+    }>(url);
+  },
+
+  // 获取系统总体统计
+  getSystemStats: () =>
+    request<{ success: boolean; stats: any }>('/api/ai/data/stats'),
+
+  // 获取智能体使用排名
+  getAgentsRanking: (limit: number = 10) =>
+    request<{ success: boolean; ranking: any[] }>(`/api/ai/data/agents/ranking?limit=${limit}`),
+
+  // 获取学生对话列表
+  getStudentConversations: (
+    student_id: number,
+    start_date?: string,
+    end_date?: string,
+    page: number = 1,
+    page_size: number = 10
+  ) => {
+    let url = `/api/ai/data/students/${student_id}/conversations?page=${page}&page_size=${page_size}`;
+    if (start_date) url += `&start_date=${encodeURIComponent(start_date)}`;
+    if (end_date) url += `&end_date=${encodeURIComponent(end_date)}`;
+    return request<{
+      success: boolean;
+      conversations: any[];
+      total: number;
+      page: number;
+      page_size: number;
+    }>(url);
+  },
+
+  // 获取对话详情
+  getConversationDetails: (conversation_id: number) =>
+    request<{
+      success: boolean;
+      conversation: any;
+      messages: any[];
+    }>(`/api/ai/data/conversations/${conversation_id}`),
 };
 
 // 导出所有API
@@ -367,4 +438,5 @@ export default {
   message: messageApi,
   chat: chatApi,
   stats: statsApi,
+  data: dataApi,
 };

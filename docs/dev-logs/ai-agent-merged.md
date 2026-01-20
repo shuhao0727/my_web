@@ -584,6 +584,466 @@ cp /Volumes/文件/4-实用代码/my_web/backend/znt.db /Volumes/文件/4-实用
 - 文档整合：合并所有AI-Agent相关文档，保留最新内容
 - 监控完善：增强监控系统的时间验证功能
 
+### v2.4 (2026-01-20) - React Hydration错误修复和运行时错误修复
+#### 第一部分：Hydration错误修复
+##### 错误现象
+- Hydration failed because the server rendered HTML didn't match the client
+- 具体错误：`hidden`属性在服务器端是`true`，客户端是`null`
+- `translate`属性相关的不匹配问题
+
+##### 原因分析
+1. **Next.js服务器端渲染(SSR)与客户端渲染不匹配**
+   - 服务器端生成的HTML与客户端React重新渲染的HTML不一致
+   - 常见原因：浏览器扩展、动态数据、时区差异、DOM操作
+
+2. **特定问题点**
+   - `translate="no"`属性在服务器端和客户端表现不一致
+   - 动态时间显示导致的时间差异
+   - 组件在服务器端和客户端初始化状态不同
+
+##### 解决方案
+1. **AdminLayout组件修复**
+   ```typescript
+   // 替换 translate="no" 为 data-no-translate
+   <Layout className="h-screen flex flex-row" suppressHydrationWarning data-no-translate>
+   <div className="h-full flex flex-col" data-no-translate>
+   <div className="font-bold text-lg" data-no-translate>AI智能体管理</div>
+   ```
+
+2. **DataManagement组件修复**
+   ```typescript
+   // 添加isClient状态检查，避免服务器端渲染差异
+   const [isClient, setIsClient] = useState(false);
+   
+   useEffect(() => {
+     setIsClient(true);
+   }, []);
+   
+   // 服务器端渲染时返回空的div
+   if (!isClient) {
+     return <div className="h-full" suppressHydrationWarning />;
+   }
+   ```
+
+3. **通用修复措施**
+   - 使用`suppressHydrationWarning`属性抑制特定警告
+   - 确保服务器端和客户端渲染逻辑一致
+   - 避免在渲染中使用`Date.now()`、`Math.random()`等动态值
+
+##### 验证方法
+1. 访问管理页面 http://localhost:6608/ai-lab/admin
+2. 浏览器开发者工具查看Console无hydration错误
+3. 页面正常加载，所有功能可用
+
+#### 第二部分：运行时TypeError修复
+##### 错误现象
+- 点击"查看详情"按钮时出现：`Cannot read properties of undefined (reading 'map')`
+- 错误发生在renderDetailModal函数中
+- 具体错误：`currentConversation.messages`为undefined，尝试调用`.map()`方法失败
+
+##### 原因分析
+1. **API响应数据结构不完整**
+   - 后端返回的对话详情中，`messages`字段可能为undefined或null
+   - 用户或智能体信息可能缺失（`user`或`agent`字段为null）
+
+2. **前端缺乏数据验证**
+   - 渲染时直接访问嵌套属性而不检查存在性
+   - 没有提供默认值或回退显示
+
+##### 解决方案
+1. **加强数据验证和空值处理**
+   ```typescript
+   // 在访问嵌套属性前进行检查
+   <Descriptions.Item label="学生">{currentConversation.user?.username || '未知用户'}</Descriptions.Item>
+   <Descriptions.Item label="智能体">{currentConversation.agent?.name || '未知智能体'}</Descriptions.Item>
+   ```
+
+2. **messages数组安全检查**
+   ```typescript
+   {currentConversation.messages && currentConversation.messages.length > 0 ? (
+     currentConversation.messages.map((msg, index) => (
+       <div key={msg.id || index} ...>
+         {/* 安全访问msg属性 */}
+         <Tag color={msg.role === 'user' ? 'blue' : 'green'}>
+           {msg.role === 'user' ? '学生提问' : 'AI回答'}
+         </Tag>
+         <Text type="secondary" className="text-xs">
+           {msg.created_at ? new Date(msg.created_at).toLocaleString('zh-CN') : '未知时间'}
+           {msg.tokens && ` • ${msg.tokens} tokens`}
+         </Text>
+         <div className="whitespace-pre-wrap">{msg.content || '无内容'}</div>
+       </div>
+     ))
+   ) : (
+     <div className="text-center py-8 text-gray-500">暂无消息内容</div>
+   )}
+   ```
+
+3. **导出功能增强安全性**
+   ```typescript
+   // 导出对话时添加空值检查
+   const content = `对话标题：${currentConversation.title}\n` +
+                  `学生：${currentConversation.user?.username || '未知用户'}\n` +
+                  `智能体：${currentConversation.agent?.name || '未知智能体'}\n` +
+                  `开始时间：${currentConversation.start_time ? new Date(currentConversation.start_time).toLocaleString('zh-CN') : '未知时间'}\n` +
+                  `消息数：${currentConversation.total_messages || 0}\n` +
+                  `Token数：${currentConversation.total_tokens || 0}\n\n` +
+                  '对话内容：\n' +
+                  (currentConversation.messages && currentConversation.messages.length > 0 ?
+                    currentConversation.messages.map(msg =>
+                      `${msg.role === 'user' ? '学生' : 'AI'} (${msg.created_at ? new Date(msg.created_at).toLocaleString('zh-CN') : '未知时间'}):\n${msg.content || '无内容'}\n`
+                    ).join('\n') : '无消息内容');
+   ```
+
+##### 验证方法
+1. 访问学生对话记录页面
+2. 点击任意对话的"查看详情"按钮
+3. 模态框应正常显示，无运行时错误
+4. 即使API返回不完整数据，界面也应正常显示
+
+#### 第三部分：导出功能TypeError修复
+##### 错误现象
+- 点击"导出对话"按钮时出现：`Cannot read properties of undefined (reading 'map')`
+- 错误发生在handleExport函数中
+- 具体错误：尝试在未定义的messages数组上调用`.map()`方法
+
+##### 原因分析
+1. **导出时数据不一致**
+   - 导出按钮从表格行触发，但此时currentConversation可能为null（未打开详情模态框）
+   - 即使打开了详情模态框，导出的对话ID可能与当前查看的对话ID不一致
+   - API返回的对话详情中，messages字段可能为undefined
+
+2. **导出逻辑缺陷**
+   - 直接使用currentConversation，未考虑其可能为null或ID不匹配的情况
+   - 未在调用.map()前检查messages数组的存在性
+
+##### 解决方案
+1. **增强导出函数的数据获取逻辑**
+   ```typescript
+   const handleExport = async (conversationId: number) => {
+     // 防止重复点击
+     if (exporting) return;
+     
+     setExporting(true);
+     
+     try {
+       // 获取要导出的对话数据
+       let conversationToExport: ConversationDetail | null = null;
+       
+       // 如果当前打开的对话详情就是要导出的对话，直接使用
+       if (currentConversation && currentConversation.id === conversationId) {
+         conversationToExport = currentConversation;
+       } else {
+         // 否则，调用API获取对话详情
+         message.loading('正在加载对话数据...', 0);
+         try {
+           const res = await aiApi.data.getConversationDetails(conversationId);
+           if (res.success) {
+             conversationToExport = res.conversation;
+           } else {
+             message.destroy();
+             message.error('获取对话详情失败，无法导出');
+             return;
+           }
+         } catch (error) {
+           console.error('获取对话详情失败:', error);
+           message.destroy();
+           message.error('获取对话详情失败，请检查网络连接');
+           return;
+         } finally {
+           message.destroy();
+         }
+       }
+       
+       if (!conversationToExport) {
+         message.warning('没有可导出的对话数据');
+         return;
+       }
+       
+       // 安全地构建导出内容，处理可能为空的数据
+       const content = `对话标题：${conversationToExport.title || '无标题'}\n` +
+                      `学生：${conversationToExport.user?.username || '未知用户'}\n` +
+                      `智能体：${conversationToExport.agent?.name || '未知智能体'}\n` +
+                      `开始时间：${conversationToExport.start_time ? new Date(conversationToExport.start_time).toLocaleString('zh-CN') : '未知时间'}\n` +
+                      `消息数：${conversationToExport.total_messages || 0}\n` +
+                      `Token数：${conversationToExport.total_tokens || 0}\n\n` +
+                      '对话内容：\n' +
+                      (conversationToExport.messages && conversationToExport.messages.length > 0 ? 
+                       conversationToExport.messages.map(msg =>
+                         `${msg.role === 'user' ? '学生' : 'AI'} (${msg.created_at ? new Date(msg.created_at).toLocaleString('zh-CN') : '未知时间'}):\n${msg.content || '无内容'}\n`
+                       ).join('\n') : '无消息内容');
+       
+       const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+       const url = URL.createObjectURL(blob);
+       const link = document.createElement('a');
+       link.href = url;
+       link.download = `对话_${conversationId}_${new Date().toISOString().slice(0, 10)}.txt`;
+       link.click();
+       URL.revokeObjectURL(url);
+       
+       message.success('导出成功');
+     } catch (error) {
+       console.error('导出对话失败:', error);
+       message.error('导出失败，请重试');
+     } finally {
+       setExporting(false);
+     }
+   };
+   ```
+
+##### 修复要点
+1. **数据获取策略**：
+   - 优先使用当前已加载的对话详情（如果ID匹配）
+   - 否则重新调用API获取指定对话的详情
+   - 添加加载状态提示，提升用户体验
+
+2. **安全数据访问**：
+   - 在所有嵌套属性访问前进行空值检查
+   - 为所有可能缺失的字段提供默认值
+   - 在调用`.map()`前验证数组存在性和长度
+
+3. **用户体验优化**：
+   - 添加防重复点击机制
+   - 提供清晰的加载状态和错误提示
+   - 即使在数据不完整的情况下也能正常导出
+
+##### 验证方法
+1. 在学生对话记录页面，点击任意对话的"导出"按钮
+2. 观察是否正常下载文本文件，无运行时错误
+3. 尝试在未打开详情模态框的情况下直接导出
+4. 尝试导出不同对话，确保都能正常工作
+
+#### 第四部分：对话详情数据合并问题修复
+##### 问题现象
+1. **查看详情问题**：点击"查看详情"按钮时，模态框中的"对话内容"区域显示为空（显示"暂无消息内容"）
+2. **导出功能问题**：虽然修复了TypeError，但导出时可能没有对话内容
+
+##### 原因分析
+1. **API数据结构理解错误**：
+   - 后端API返回的数据结构为：`{success: true, conversation: {...}, messages: [...]}`
+   - `conversation`对象中不包含`messages`字段，`messages`是独立的数组字段
+   - 前端代码期望`conversation`对象包含`messages`字段，导致数据合并错误
+
+2. **数据合并逻辑缺失**：
+   - `handleViewDetail`函数没有将API返回的`messages`数组合并到`conversation`对象中
+   - `handleExport`函数也存在相同的问题
+   - 导致`currentConversation.messages`为`undefined`或空数组
+
+##### 解决方案
+1. **修复查看详情函数的数据合并**：
+   ```typescript
+   const handleViewDetail = async (conversationId: number) => {
+     setDetailLoading(true);
+     try {
+       const res = await aiApi.data.getConversationDetails(conversationId);
+       if (res.success) {
+         // API返回的数据结构：res.conversation 和 res.messages 是分开的
+         // 我们需要合并为一个对象，以匹配ConversationDetail接口
+         const conversationDetail: ConversationDetail = {
+           ...res.conversation,
+           messages: res.messages || []
+         };
+         setCurrentConversation(conversationDetail);
+         setDetailVisible(true);
+       } else {
+         message.error('获取对话详情失败');
+       }
+     } catch (error) {
+       console.error('获取对话详情失败:', error);
+       message.error('获取对话详情失败');
+     } finally {
+       setDetailLoading(false);
+     }
+   };
+   ```
+
+2. **修复导出函数的数据合并**：
+   ```typescript
+   const handleExport = async (conversationId: number) => {
+     // 防止重复点击
+     if (exporting) return;
+     
+     setExporting(true);
+     
+     try {
+       // 获取要导出的对话数据
+       let conversationToExport: ConversationDetail | null = null;
+       
+       // 如果当前打开的对话详情就是要导出的对话，直接使用
+       if (currentConversation && currentConversation.id === conversationId) {
+         conversationToExport = currentConversation;
+       } else {
+         // 否则，调用API获取对话详情
+         message.loading('正在加载对话数据...', 0);
+         try {
+           const res = await aiApi.data.getConversationDetails(conversationId);
+           if (res.success) {
+             // API返回的数据结构：res.conversation 和 res.messages 是分开的
+             // 我们需要合并为一个对象，以匹配ConversationDetail接口
+             conversationToExport = {
+               ...res.conversation,
+               messages: res.messages || []
+             };
+           } else {
+             message.destroy();
+             message.error('获取对话详情失败，无法导出');
+             return;
+           }
+         } catch (error) {
+           console.error('获取对话详情失败:', error);
+           message.destroy();
+           message.error('获取对话详情失败，请检查网络连接');
+           return;
+         } finally {
+           message.destroy();
+         }
+       }
+       
+       // ... 后续导出逻辑
+     }
+   };
+   ```
+
+##### 修复要点
+1. **正确理解API数据结构**：
+   - 通过API测试确认返回数据结构
+   - 明确`conversation`和`messages`是分开的字段
+   - 在合并数据时正确处理这两个字段
+
+2. **数据合并一致性**：
+   - 在`handleViewDetail`和`handleExport`函数中使用相同的数据合并逻辑
+   - 确保合并后的对象符合`ConversationDetail`接口定义
+   - 为`messages`字段提供默认值（空数组）
+
+3. **功能验证**：
+   - 查看详情时，对话内容应正常显示
+   - 导出功能应包含完整的对话内容
+   - 即使API返回空消息数组，界面也应正常显示
+
+##### 验证方法
+1. 访问学生对话记录页面
+2. 点击任意对话的"查看详情"按钮
+3. 确认模态框中显示完整的对话内容（用户问题和AI回答）
+4. 点击"导出对话"按钮，确认正常下载包含对话内容的文本文件
+5. 测试不同对话，确保都能正常工作
+
+#### 修复总结
+1. **防御性编程原则**
+   - 始终假设外部数据可能不完整或不一致
+   - 在访问嵌套属性前进行空值检查
+   - 为关键数据提供合理的默认值
+
+2. **用户体验优化**
+   - 即使数据缺失，界面也能正常显示
+   - 用户看到有意义的默认值而非错误信息
+   - 关键功能（如导出）在数据不完整时仍能工作
+
+3. **代码健壮性**
+   - 减少运行时错误的发生
+   - 提高组件对异常数据的容忍度
+   - 便于后续维护和调试
+
+4. **功能完整性**
+   - 导出功能现在可以独立工作，不依赖当前打开的对话详情
+   - 支持从表格直接导出任意对话
+   - 即使API返回不完整数据，也能正常处理
+
+5. **数据一致性**
+   - 确保前端数据模型与API响应数据结构匹配
+   - 在数据获取和转换过程中保持一致性
+   - 所有功能使用相同的数据处理逻辑
+
+#### 第五部分：DataManagement组件文件拆分重构
+##### 重构背景
+- **问题识别**：DataManagement.tsx文件过于庞大，代码行数超过900行
+- **维护困难**：单个文件包含UI组件、业务逻辑、状态管理、类型定义，难以维护
+- **可读性差**：功能分散在同一个文件中，新开发者难以快速理解代码结构
+
+##### 拆分方案
+将原DataManagement.tsx文件拆分为三个独立文件：
+1. **DataManagement.tsx** (616行) - 主组件文件，专注UI渲染和状态管理
+2. **dataManagementHelpers.ts** (484行) - 工具函数文件，包含所有业务逻辑和API调用
+3. **types.ts** (132行) - 类型定义文件，包含所有接口和类型定义
+4. **总计：1232行**（原文件约900+行，增加了一些必要的包装函数）
+
+##### 文件结构
+```
+DataManagement/
+├── DataManagement.tsx          # 主组件
+├── dataManagementHelpers.ts    # 业务逻辑函数
+└── types.ts                    # 类型定义
+```
+
+##### 功能模块化拆分
+1. **业务逻辑提取**：
+   - `handleBatchExport` - 批量导出为Excel（包含详细对话内容）
+   - `loadConversations` - 数据加载功能，支持多维度筛选
+   - `handleViewDetail` - 详情查看功能，包含消息列表
+   - `handleExport` - 单个导出功能，导出为文本文件
+   - `handleDelete` - 删除功能（标记为暂不可用）
+   - `handleSelectAll` - 批量选择功能，全选/取消全选
+
+2. **类型定义统一**：
+   - `DataManagementProps` - 组件属性接口
+   - `Conversation`, `Student`, `Agent` - 数据实体接口
+   - `ConversationDetail` - 对话详情接口（包含消息数组）
+
+3. **主组件优化**：
+   - UI组件专注渲染和事件处理
+   - 通过包装函数调用工具函数，保持调用简洁
+   - 布局优化：筛选条件单行显示，响应式设计
+
+##### 技术实现细节
+1. **职责分离原则**：
+   - 主组件专注UI渲染和状态管理
+   - 工具函数专注业务逻辑和数据处理
+   - 类型定义统一管理，避免重复
+
+2. **函数命名清晰**：
+   - 所有工具函数都有明确的功能职责
+   - 包装函数确保主组件调用简洁
+   - 类型名称具有自描述性
+
+3. **可维护性提升**：
+   - 单个文件长度大幅减少（从900+行到600+行）
+   - 逻辑相关的函数集中在同一文件
+   - 类型定义统一管理，便于修改和扩展
+
+##### 验证方法
+1. **TypeScript编译检查**：
+   ```bash
+   cd /Volumes/文件/4-实用代码/my_web/frontend
+   npx tsc --noEmit  # 应无编译错误
+   ```
+
+2. **文件行数验证**：
+   ```bash
+   wc -l app/ai-lab/admin/components/DataManagement.tsx \
+         app/ai-lab/admin/components/dataManagementHelpers.ts \
+         app/ai-lab/admin/components/types.ts
+   # 输出：1232 total
+   ```
+
+3. **功能完整性测试**：
+   - 批量导出功能正常工作
+   - 多维度筛选（学生、班级、智能体、时间范围、搜索）
+   - 对话详情查看包含完整消息内容
+   - 单个对话导出为文本文件
+   - 全选/取消全选功能正常
+
+##### 重构收益
+1. **代码可读性**：新开发者可以快速理解模块结构
+2. **维护便利性**：修改业务逻辑时只需编辑工具函数文件
+3. **类型安全**：统一的类型定义减少类型错误
+4. **测试友好**：工具函数可以独立测试，无需UI依赖
+5. **扩展性**：新增功能可以按模块添加到对应文件中
+
+##### 使用建议
+1. 开发服务器端口6608可能被占用，如需重启请先结束占用进程
+2. 所有现有功能保持不变，代码结构更清晰
+3. 未来新增功能可以按模块添加到对应文件中
+4. 类型定义可以根据需要继续扩展
+
 ### 未来计划
 - 数据管理系统完整实现
 - 更多AI服务集成
@@ -679,7 +1139,7 @@ sqlite3 backend/znt.db                # 连接数据库
 ```
 
 ---
-**文档版本**: v2.3  
+**文档版本**: v2.5  
 **最后更新**: 2026-01-20  
 **适用版本**: 当前生产环境  
 **文档状态**: ✅ 已完成合并和更新  
@@ -690,6 +1150,9 @@ sqlite3 backend/znt.db                # 连接数据库
 - `ai-agent-time-fix-20260120.md` - 时间显示修复方案
 - `ai-agent-management-design.md` - 智能体管理设计
 - `ai-agent-data-management-simple.md` - 数据管理系统简化版
+
+**新增内容**:
+- **DataManagement组件文件拆分重构** (v2.5) - 将900+行的大文件拆分为三个模块化文件，提升代码可维护性
 
 **已删除冗余文档**:
 - `ai-agent-data-management-design.md` (详细版，保留简化版)

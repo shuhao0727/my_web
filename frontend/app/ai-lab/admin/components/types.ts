@@ -70,8 +70,6 @@ export interface AgentManagementProps {
 }
 
 export interface DataManagementProps {
-  dataStats: DataStats;
-  adminAgents: AiAgent[];
   user: any;
 }
 
@@ -80,4 +78,55 @@ export interface CreateAgentModalProps {
   onCancel: () => void;
   onOk: (form: CreateAgentForm) => void;
   loading?: boolean;
+}
+
+// 数据管理相关类型
+export interface Conversation {
+  id: number;
+  title: string;
+  agent_name: string;
+  start_time: string;
+  total_messages: number;
+  total_tokens: number;
+  user_id: number;
+  student_name: string;
+  student_id?: string;
+  class_name?: string;
+}
+
+export interface Agent {
+  id: number;
+  name: string;
+  api_type: string;
+  model?: string;
+}
+
+export interface ConversationDetail {
+  id: number;
+  title: string;
+  user: { id: number; username: string };
+  agent: { id: number; name: string };
+  start_time: string;
+  total_messages: number;
+  total_tokens: number;
+  messages: Array<{
+    id: number;
+    role: string;
+    content: string;
+    created_at: string;
+    tokens: number;
+  }>;
+}
+
+export interface ExcelExportData {
+  // 暂时留空，可根据需要扩展
+}
+
+// 数据管理筛选条件
+export interface DataFilterConditions {
+  selectedStudent?: number;
+  selectedClass?: string;
+  selectedAgent?: number;
+  dateRange?: [string, string];
+  searchText?: string;
 }
