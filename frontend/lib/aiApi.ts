@@ -10,7 +10,6 @@ async function request<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
-  console.log('API请求 URL:', url, 'API_BASE_URL:', API_BASE_URL);
   
   // 动态设置headers：如果body是FormData，让浏览器自动设置Content-Type
   const headers = options.body instanceof FormData
@@ -21,13 +20,10 @@ async function request<T>(
       };
 
   try {
-    console.log('开始fetch请求，headers:', headers);
     const response = await fetch(url, { ...options, headers });
-    console.log('收到响应，status:', response.status, 'ok:', response.ok);
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => {
-        console.log('无法解析错误响应为JSON');
         return {};
       });
       throw new Error(
@@ -36,10 +32,8 @@ async function request<T>(
     }
 
     const result = await response.json();
-    console.log('成功解析JSON响应');
     return result;
   } catch (error) {
-    console.error('API请求错误:', error);
     // 确保抛出的总是 Error 对象，并提供有意义的错误消息
     if (error instanceof Error) {
       throw error;
@@ -57,12 +51,24 @@ async function request<T>(
 
 // 用户API
 export const userApi = {
-  // 用户登录
-  login: (username: string, studentId?: string) => 
-    request<{ success: boolean; user: any; token: string; message: string }>('/api/ai/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ username, student_id: studentId }),
-    }),
+  // 用户登录 - 不抛出错误，返回包含错误信息的对象
+  login: async (username: string, studentId?: string) => {
+    try {
+      const response = await request<{ success: boolean; user: any; token: string; message: string }>('/api/ai/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ username, student_id: studentId }),
+      });
+      return response;
+    } catch (error) {
+      // 返回一个包含错误信息的对象，而不是抛出错误
+      return {
+        success: false,
+        user: null,
+        token: '',
+        message: error instanceof Error ? error.message : '登录失败',
+      };
+    }
+  },
 
   // 获取用户列表（测试用）
   getUsers: () => 

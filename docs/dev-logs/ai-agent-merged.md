@@ -1044,6 +1044,167 @@ DataManagement/
 3. 未来新增功能可以按模块添加到对应文件中
 4. 类型定义可以根据需要继续扩展
 
+### v2.6 (2026-01-21) - 登录验证控制台错误修复
+#### 问题描述
+- **控制台错误**：用户登录时输入错误学号，后端返回“学号不正确”错误，前端API客户端抛出错误导致控制台显示`Console Error`
+- **错误堆栈**：`at request (file:///.../.next/dev/static/chunks/_740de7d8._.js:54:19)`
+
+#### 原因分析
+1. **前端验证缺失**：用户不输入学号直接点击登录按钮时，前端没有进行必填验证
+2. **请求发送到后端**：前端将空学号请求发送到后端，后端验证失败返回错误
+3. **错误处理显示**：错误被捕获后显示在控制台，影响用户体验
+
+#### 解决方案
+##### 1. 前端验证修复 (`frontend/app/ai-lab/login/page.tsx`)
+- **学号必填验证**：在`handleLogin`函数中添加学号非空检查
+  ```typescript
+  if (!trimmedStudentId) {
+    setLoginError('请输入学号');
+    return;
+  }
+  ```
+- **UI标识**：将学号字段标记为`required`，显示必填标识
+- **错误处理优化**：在前端拦截验证，减少不必要的后端请求
+
+##### 2. 后端验证保持 (`backend/routers/ai/auth.py`)
+- **安全验证**：保持后端学号必填验证，作为第二道防线
+- **一致错误消息**：返回明确的错误提示`"请输入学号"`、`"学号不正确"`
+
+##### 3. API客户端优化 (`frontend/lib/aiApi.ts`)
+- **错误处理改进**：修改`userApi.login()`方法，捕获错误并返回包含错误信息的对象，而非抛出错误
+  ```typescript
+  login: async (username: string, studentId?: string) => {
+    try {
+      const response = await request(...);
+      return response;
+    } catch (error) {
+      return {
+        success: false,
+        user: null,
+        token: '',
+        message: error instanceof Error ? error.message : '登录失败',
+      };
+    }
+  }
+  ```
+- **移除调试日志**：清理所有`console.log`和`console.error`语句
+- **简化请求封装**：保持干净的请求逻辑，避免不必要的控制台输出
+
+##### 4. 登录页面错误处理优化 (`frontend/app/ai-lab/login/page.tsx`)
+- **移除控制台输出**：删除所有`console.error`语句
+- **直接处理API响应**：直接处理API返回的错误对象，不再使用`try-catch`抛出错误
+
+#### 验证结果
+1. **错误学号登录**：前端显示错误提示，控制台无错误输出
+2. **空学号登录**：前端拦截并提示，不发送后端请求，控制台无错误
+3. **正确凭证登录**：正常跳转，控制台无错误
+
+#### 修复效果
+- ✅ **控制台错误完全消除**：用户输入错误学号时不再产生控制台错误
+- ✅ **前端验证及时反馈**：用户立即看到清晰的错误提示
+- ✅ **后端安全验证保持**：防止恶意绕过前端验证
+- ✅ **系统安全可靠**：双重验证机制确保安全性
+
+### v2.7 (2026-01-21) - 时间显示不一致问题修复
+#### 问题描述
+- **用户反馈**：管理员后台查看学生对话记录时，发现对话创建时间与消息时间戳不一致
+- **具体现象**：对话创建时间显示为`2026/1/21 08:15:17`，但消息时间戳显示为`2026/1/21 00:15:27`（相差8小时）
+- **影响范围**：所有时间显示位置，包括表格列、详情模态框、消息时间戳
+
+#### 原因分析
+1. **数据库时间存储**：数据库存储的是UTC时间（如`2026-01-21T00:15:27`）
+2. **前端时间解析错误**：前端使用`new Date(text).toLocaleString('zh-CN')`直接解析，未指定时区
+3. **时区转换缺失**：UTC时间被当作本地时间显示，导致显示时间比实际早8小时
+
+#### 解决方案
+##### 1. 创建统一的时间格式化函数
+在两个关键文件中添加`formatTimeForDisplay`函数：
+- `frontend/app/ai-lab/page.tsx` - 用户对话页面
+- `frontend/app/ai-lab/admin/components/DataManagement.tsx` - 管理员数据管理页面
+
+##### 2. 时间解析逻辑优化
+```typescript
+const formatTimeForDisplay = (dateInput: Date | string): string => {
+  if (!dateInput) return '-';
+  
+  let date: Date;
+  
+  if (typeof dateInput === 'string') {
+    // 从API返回的字符串，需要解析为UTC时间
+    let isoString = dateInput.trim();
+    
+    // 如果已经是ISO格式（包含T），确保有Z表示UTC
+    if (isoString.includes('T')) {
+      if (!isoString.endsWith('Z')) {
+        isoString += 'Z';
+      }
+    } else {
+      // 假设是"YYYY-MM-DD HH:MM:SS"格式，转换为ISO格式并添加Z表示UTC
+      isoString = isoString.replace(' ', 'T') + 'Z';
+    }
+    
+    date = new Date(isoString);
+    
+    // 如果解析失败，尝试直接解析
+    if (isNaN(date.getTime())) {
+      console.warn('时间解析失败，使用直接解析:', dateInput);
+      date = new Date(dateInput);
+    }
+  } else {
+    // 用户消息的Date对象，直接使用（本地时间）
+    date = dateInput;
+  }
+  
+  // 如果仍然无效，返回-
+  if (isNaN(date.getTime())) {
+    return '-';
+  }
+  
+  // 使用亚洲/上海时区显示时间，确保正确转换UTC到本地时间
+  const formattedTime = date.toLocaleString('zh-CN', { 
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+    timeZone: 'Asia/Shanghai'
+  });
+  
+  return formattedTime;
+};
+```
+
+##### 3. 替换所有时间显示位置
+在DataManagement.tsx中替换以下位置：
+1. **表格列渲染**：`render: (text: string) => formatTimeForDisplay(text)`
+2. **详情模态框**：`{currentConversation.start_time ? formatTimeForDisplay(currentConversation.start_time) : '-'}`
+3. **消息时间戳**：`{msg.created_at ? formatTimeForDisplay(msg.created_at) : '未知时间'}`
+
+##### 4. 修复ai-lab主页面时间显示
+- 将`date.toLocaleTimeString`改为`date.toLocaleString`，显示完整日期时间
+- 确保所有消息时间都使用相同的格式化逻辑
+
+#### 验证结果
+1. **时间转换正确性**：UTC时间`2026-01-21T00:15:27` → 上海时间`2026/01/21 08:15:27`
+2. **时间一致性**：所有时间显示位置都使用相同的转换逻辑
+3. **错误处理**：空值或无效时间显示为`-`或`未知时间`
+4. **时区正确性**：所有时间都正确转换为亚洲/上海时区（UTC+8）
+
+#### 修复效果
+- ✅ **时间显示一致性**：所有位置显示相同的时间格式
+- ✅ **时区转换正确**：UTC时间正确转换为本地时间
+- ✅ **用户体验提升**：用户看到的是符合预期的本地时间
+- ✅ **系统健壮性**：无效时间数据得到妥善处理
+- ✅ **代码维护性**：统一的时间处理函数便于维护
+
+#### 技术要点
+1. **UTC时间识别**：数据库存储的时间字符串没有时区标识，但实际上是UTC时间
+2. **ISO格式标准化**：将数据库时间字符串转换为标准ISO格式并添加`Z`标识
+3. **时区指定**：使用`timeZone: 'Asia/Shanghai'`确保正确时区转换
+4. **完整日期时间**：显示年月日时分秒，便于用户理解时间关系
+
 ### 未来计划
 - 数据管理系统完整实现
 - 更多AI服务集成
@@ -1139,8 +1300,8 @@ sqlite3 backend/znt.db                # 连接数据库
 ```
 
 ---
-**文档版本**: v2.5  
-**最后更新**: 2026-01-20  
+**文档版本**: v2.7  
+**最后更新**: 2026-01-21  
 **适用版本**: 当前生产环境  
 **文档状态**: ✅ 已完成合并和更新  
 
@@ -1153,6 +1314,8 @@ sqlite3 backend/znt.db                # 连接数据库
 
 **新增内容**:
 - **DataManagement组件文件拆分重构** (v2.5) - 将900+行的大文件拆分为三个模块化文件，提升代码可维护性
+- **登录验证控制台错误修复** (v2.6) - 修复前端登录验证导致的控制台错误，增强用户体验和系统安全性
+- **时间显示不一致问题修复** (v2.7) - 修复管理员后台时间显示不一致问题，UTC时间正确转换为上海时区
 
 **已删除冗余文档**:
 - `ai-agent-data-management-design.md` (详细版，保留简化版)

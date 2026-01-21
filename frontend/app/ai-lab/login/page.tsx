@@ -31,42 +31,46 @@ export default function AiLabLoginPage() {
       return;
     }
 
+    // 新增：验证学号不能为空
+    if (!trimmedStudentId) {
+      setLoginError('请输入学号');
+      return;
+    }
+
     setLoginLoading(true);
     setLoginError('');
-    try {
-      const response = await aiApi.user.login(trimmedUsername, trimmedStudentId || undefined);
-      if (response.success) {
-        // 使用后端返回的用户信息
-        const userData = {
-          id: response.user.id,
-          username: response.user.username,
-          student_id: response.user.student_id,
-          class_name: response.user.class_name,
-          isAdmin: response.user.username === 'admin',
-        };
-        
-        // 保存到本地存储
-        localStorage.setItem('ai_lab_user', JSON.stringify(userData));
-        
-        // 提示用户登录成功
-        setLoginError('登录成功！正在跳转到AI智能体界面...');
-        
-        // 跳转到主页面
-        router.push('/ai-lab');
-        
-        // 重置表单
-        setLoginForm({ username: '', studentId: '' });
-      } else {
-        setLoginError('登录失败，请检查用户名和学号');
-      }
-    } catch (error: any) {
-      console.error('登录失败:', error);
+    
+    // 调用API登录（现在不会抛出错误，总是返回一个对象）
+    const response = await aiApi.user.login(trimmedUsername, trimmedStudentId);
+    
+    if (response.success) {
+      // 使用后端返回的用户信息
+      const userData = {
+        id: response.user.id,
+        username: response.user.username,
+        student_id: response.user.student_id,
+        class_name: response.user.class_name,
+        isAdmin: response.user.username === 'admin',
+      };
+      
+      // 保存到本地存储
+      localStorage.setItem('ai_lab_user', JSON.stringify(userData));
+      
+      // 提示用户登录成功
+      setLoginError('登录成功！正在跳转到AI智能体界面...');
+      
+      // 跳转到主页面
+      router.push('/ai-lab');
+      
+      // 重置表单
+      setLoginForm({ username: '', studentId: '' });
+    } else {
       // 显示具体的错误信息
-      const errorMsg = error.message || '登录失败，请稍后重试';
+      const errorMsg = response.message || '登录失败，请检查用户名和学号';
       setLoginError(errorMsg.includes('学号不正确') ? '学号不正确' : errorMsg);
-    } finally {
-      setLoginLoading(false);
     }
+    
+    setLoginLoading(false);
   };
 
   // 处理回车键
@@ -104,7 +108,7 @@ export default function AiLabLoginPage() {
             />
           </Form.Item>
           
-          <Form.Item label="学号">
+          <Form.Item label="学号" required>
             <Input.Password
               size="large"
               placeholder="请输入学号"

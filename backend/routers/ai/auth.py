@@ -72,10 +72,11 @@ async def login(
     if user is None:
         raise HTTPException(status_code=404, detail="用户不存在")
     
-    # 检查学号（如果提供了student_id且非空）
-    if request.student_id is not None and request.student_id != "":
-        if user.student_id is None or user.student_id != request.student_id:
-            raise HTTPException(status_code=400, detail="学号不正确")
+    # 检查学号（必须提供且匹配）
+    if request.student_id is None or request.student_id == "":
+        raise HTTPException(status_code=400, detail="请输入学号")
+    if user.student_id is None or user.student_id != request.student_id:
+        raise HTTPException(status_code=400, detail="学号不正确")
     
     # 生成token
     token = create_token(user.id, user.username)  # type: ignore

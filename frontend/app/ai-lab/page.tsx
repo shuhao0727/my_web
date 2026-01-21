@@ -304,11 +304,15 @@ export default function AiLabPage() {
       date = dateInput;
     }
     
-    // 使用亚洲/上海时区显示时间，确保正确转换UTC到本地时间
-    const formattedTime = date.toLocaleTimeString('zh-CN', { 
-      hour12: false,
-      hour: '2-digit', 
+    // 使用亚洲/上海时区显示完整的日期时间
+    const formattedTime = date.toLocaleString('zh-CN', { 
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
       minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
       timeZone: 'Asia/Shanghai'
     });
     

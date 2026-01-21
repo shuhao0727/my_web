@@ -225,6 +225,106 @@ const DataManagement: React.FC<DataManagementProps> = ({ user }) => {
       setPageSize
     );
   };
+
+  // 格式化时间显示，确保显示正确的本地时间（亚洲/上海时区）
+  // 格式化UTC时间显示，转换为上海时区
+  const formatUTCTime = (dateInput: Date | string): string => {
+    if (!dateInput) return '-';
+    
+    let date: Date;
+    
+    if (typeof dateInput === 'string') {
+      // 从API返回的字符串，需要解析为UTC时间
+      let isoString = dateInput.trim();
+      
+      // 如果已经是ISO格式（包含T），确保有Z表示UTC
+      if (isoString.includes('T')) {
+        if (!isoString.endsWith('Z')) {
+          isoString += 'Z';
+        }
+      } else {
+        // 假设是"YYYY-MM-DD HH:MM:SS"格式，转换为ISO格式并添加Z表示UTC
+        isoString = isoString.replace(' ', 'T') + 'Z';
+      }
+      
+      date = new Date(isoString);
+      
+      // 如果解析失败，尝试直接解析
+      if (isNaN(date.getTime())) {
+        console.warn('时间解析失败，使用直接解析:', dateInput);
+        date = new Date(dateInput);
+      }
+    } else {
+      // 用户消息的Date对象，直接使用（本地时间）
+      date = dateInput;
+    }
+    
+    // 如果仍然无效，返回-
+    if (isNaN(date.getTime())) {
+      return '-';
+    }
+    
+    // 使用亚洲/上海时区显示时间，确保正确转换UTC到本地时间
+    const formattedTime = date.toLocaleString('zh-CN', { 
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+      timeZone: 'Asia/Shanghai'
+    });
+    
+    return formattedTime;
+  };
+
+  // 格式化本地时间显示，不进行时区转换
+  const formatLocalTime = (dateInput: Date | string): string => {
+    if (!dateInput) return '-';
+    
+    let date: Date;
+    
+    if (typeof dateInput === 'string') {
+      // 直接解析字符串，不添加Z标记
+      date = new Date(dateInput);
+      
+      // 如果解析失败，尝试ISO格式
+      if (isNaN(date.getTime())) {
+        // 尝试清理字符串
+        let isoString = dateInput.trim();
+        if (isoString.includes('T')) {
+          // 已经是ISO格式，直接使用
+          date = new Date(isoString);
+        } else {
+          // 尝试添加T分隔符
+          isoString = isoString.replace(' ', 'T');
+          date = new Date(isoString);
+        }
+      }
+    } else {
+      date = dateInput;
+    }
+    
+    // 如果仍然无效，返回-
+    if (isNaN(date.getTime())) {
+      return '-';
+    }
+    
+    // 直接使用本地时区显示，不进行时区转换
+    const formattedTime = date.toLocaleString('zh-CN', { 
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+      // 不指定timeZone，使用本地时区
+    });
+    
+    return formattedTime;
+  };
   
   // 处理筛选
   const handleFilter = () => {
@@ -303,7 +403,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ user }) => {
       dataIndex: 'start_time',
       key: 'start_time',
       width: 180,
-      render: (text: string) => text ? new Date(text).toLocaleString('zh-CN') : '-',
+      render: (text: string) => formatLocalTime(text),
       sorter: (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime(),
     },
     {
@@ -400,7 +500,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ user }) => {
               {agentName}{agentModel ? `（${agentModel}）` : ''}
             </Descriptions.Item>
             <Descriptions.Item label="开始时间">
-              {currentConversation.start_time ? new Date(currentConversation.start_time).toLocaleString('zh-CN') : '-'}
+              {currentConversation.start_time ? formatLocalTime(currentConversation.start_time) : '-'}
             </Descriptions.Item>
             <Descriptions.Item label="消息数">{currentConversation.total_messages || 0}</Descriptions.Item>
             <Descriptions.Item label="Token数">{currentConversation.total_tokens || 0}</Descriptions.Item>
@@ -421,7 +521,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ user }) => {
                       }
                     </Tag>
                     <Text type="secondary" className="text-xs">
-                      {msg.created_at ? new Date(msg.created_at).toLocaleString('zh-CN') : '未知时间'}
+                      {msg.created_at ? formatUTCTime(msg.created_at) : '未知时间'}
                       {msg.tokens && ` • ${msg.tokens} tokens`}
                     </Text>
                   </div>

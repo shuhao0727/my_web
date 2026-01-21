@@ -64,3 +64,19 @@ INFO:     Stopping reloader process [62702]
 2026-01-20 22:56:35,275 - routers.ai.chat - INFO - API调用记录: {'api_type': 'dify', 'agent_id': 12, 'user_id': 1, 'conversation_id': 31, 'request_timestamp': '2026-01-20T22:56:25.326338', 'response_timestamp': '2026-01-20T22:56:35.275776', 'duration_ms': 9949, 'status': 'success', 'error_message': None, 'request_tokens': 5, 'response_tokens': 55, 'total_tokens': 60}
 2026-01-20 22:58:11,923 - httpx - INFO - HTTP Request: POST http://wangsh.cn:6606/v1/chat-messages "HTTP/1.1 200 OK"
 2026-01-20 22:58:11,927 - routers.ai.chat - INFO - API调用记录: {'api_type': 'dify', 'agent_id': 12, 'user_id': 8, 'conversation_id': 32, 'request_timestamp': '2026-01-20T22:58:04.562149', 'response_timestamp': '2026-01-20T22:58:11.926399', 'duration_ms': 7364, 'status': 'success', 'error_message': None, 'request_tokens': 4, 'response_tokens': 22, 'total_tokens': 26}
+2026-01-21 08:11:58,220 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/chat/completions "HTTP/1.1 400 Bad Request"
+2026-01-21 08:11:58,222 - services.api_client - ERROR - API客户端错误: 400 Client error '400 Bad Request' for url 'https://api.siliconflow.cn/chat/completions'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/400
+2026-01-21 08:11:58,222 - services.deepseek_client - ERROR - DeepSeek聊天失败: Client error '400 Bad Request' for url 'https://api.siliconflow.cn/chat/completions'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/400
+2026-01-21 08:13:31,709 - httpx - INFO - HTTP Request: POST http://wangsh.cn:6606/v1/chat-messages "HTTP/1.1 200 OK"
+2026-01-21 08:13:31,718 - routers.ai.chat - INFO - API调用记录: {'api_type': 'dify', 'agent_id': 12, 'user_id': 1, 'conversation_id': 33, 'request_timestamp': '2026-01-21T08:13:22.472470', 'response_timestamp': '2026-01-21T08:13:31.716741', 'duration_ms': 9244, 'status': 'success', 'error_message': None, 'request_tokens': 5, 'response_tokens': 24, 'total_tokens': 29}
+2026-01-21 08:15:27,052 - httpx - INFO - HTTP Request: POST http://wangsh.cn:6606/v1/chat-messages "HTTP/1.1 200 OK"
+2026-01-21 08:15:27,061 - routers.ai.chat - INFO - API调用记录: {'api_type': 'dify', 'agent_id': 12, 'user_id': 8, 'conversation_id': 34, 'request_timestamp': '2026-01-21T08:15:17.197534', 'response_timestamp': '2026-01-21T08:15:27.059629', 'duration_ms': 9862, 'status': 'success', 'error_message': None, 'request_tokens': 6, 'response_tokens': 63, 'total_tokens': 69}
+2026-01-21 08:17:18,528 - httpx - INFO - HTTP Request: POST http://wangsh.cn:6606/v1/chat-messages "HTTP/1.1 200 OK"
+2026-01-21 08:40:11,871 - scheduler.sync_scheduler - INFO - 自动同步配置: enable=False, interval=86400s
+2026-01-21 08:40:11,872 - scheduler.sync_scheduler - INFO - 自动同步已禁用，跳过调度器启动
+2026-01-21 09:30:44,707 - httpx - INFO - HTTP Request: POST https://api.siliconflow.cn/chat/completions "HTTP/1.1 200 OK"
+2026-01-21 09:30:44,715 - routers.ai.chat - INFO - API调用记录: {'api_type': 'deepseek', 'agent_id': 8, 'user_id': 1, 'conversation_id': 35, 'request_timestamp': '2026-01-21T09:30:41.973938', 'response_timestamp': '2026-01-21T09:30:44.714040', 'duration_ms': 2740, 'status': 'success', 'error_message': None, 'request_tokens': 4, 'response_tokens': 25, 'total_tokens': 29}
+2026-01-21 09:47:10,297 - httpx - INFO - HTTP Request: POST http://wangsh.cn:6606/v1/chat-messages "HTTP/1.1 200 OK"
+2026-01-21 09:47:10,304 - routers.ai.chat - INFO - API调用记录: {'api_type': 'dify', 'agent_id': 12, 'user_id': 1, 'conversation_id': 33, 'request_timestamp': '2026-01-21T09:47:00.614224', 'response_timestamp': '2026-01-21T09:47:10.304146', 'duration_ms': 9689, 'status': 'success', 'error_message': None, 'request_tokens': 5, 'response_tokens': 56, 'total_tokens': 61}
