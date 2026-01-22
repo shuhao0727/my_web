@@ -69,6 +69,32 @@
      ]
      ```
 
+  5. **问题**: 信息学竞赛板块的GitHub自动同步被禁止
+     **原因**: 环境变量`ENABLE_AUTO_SYNC=False`导致自动同步调度器无法启动，自动同步功能被禁用
+     **解决方案**: 
+     1. 检查环境变量配置，确认`ENABLE_AUTO_SYNC`设置为`False`
+     2. 修改`backend/.env`文件，将`ENABLE_AUTO_SYNC`改为`True`
+     3. 重启后端服务以加载新配置
+     4. 验证调度器状态，确认自动同步已成功启用
+     ```env
+     # 修改前
+     ENABLE_AUTO_SYNC=False
+     
+     # 修改后
+     ENABLE_AUTO_SYNC=True
+     ```
+     验证命令：
+     ```bash
+     # 验证调度器状态
+     curl -s http://localhost:8000/api/repo/sync-scheduler/status
+     
+     # 预期输出：
+     # {"success":true,"status":{"enabled":true,"running":true,"interval_seconds":86400,...}}
+     
+     # 手动触发同步验证
+     curl -s -X POST http://localhost:8000/api/repo/sync
+     ```
+
 ## 三、关键变量名
 ### 环境变量 (.env)
 ```env
@@ -121,4 +147,4 @@ DATABASE_URL=sqlite:///./my_web.db  # 数据库连接字符串
    - 手动同步和自动同步的区分显示
 
 ---
-*最后更新: 2026-01-17 20:26:00*
+*最后更新: 2026-01-21 14:27:00*

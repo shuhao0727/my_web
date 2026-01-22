@@ -340,6 +340,58 @@
         </nav>
       </div>
       ```
+  15. **问题**: "个人程序"导航链接需要从`/resources`更改为`/personal-programs`
+      **原因**: 为了更清晰的URL结构和个人程序页面的独立性，需要将导航链接统一更新
+      **解决方案**: 
+      - 更新首页页面（`frontend/app/(home)/page.tsx`）中的"个人程序"链接，从`/resources`改为`/personal-programs`
+      - 更新Footer组件（`frontend/components/layout/Footer.tsx`）中的快速链接和学习资源子链接前缀
+      - 验证Header组件已正确指向`/personal-programs`
+      - 确认路由页面`frontend/app/personal-programs/`已存在，包含`page.tsx`和动态路由
+      ```typescript
+      // 首页页面修改
+      // 修改前：
+      { icon: <CodeOutlined />, title: '个人程序', link: '/resources', ... }
+      
+      // 修改后：
+      { icon: <CodeOutlined />, title: '个人程序', link: '/personal-programs', ... }
+      
+      // Footer组件修改
+      // 快速链接修改前：
+      { label: '学习资源', href: '/resources' },
+      
+      // 修改后：
+      { label: '个人程序', href: '/personal-programs' },
+      
+      // 学习资源子链接修改前：
+      { label: '编程教程', href: '/resources/programming' },
+      
+      // 修改后：
+      { label: '编程教程', href: '/personal-programs/programming' },
+      // 其他子链接同理更新前缀
+      ```
+  16. **问题**: 信息学竞赛板块的GitHub自动同步被禁止
+      **原因**: 环境变量`ENABLE_AUTO_SYNC=False`导致自动同步调度器无法启动
+      **解决方案**: 
+      - 修改环境变量`backend/.env`，将`ENABLE_AUTO_SYNC`设置为`True`
+      - 重启后端服务以加载新配置
+      - 验证调度器状态，确认自动同步已启用
+      ```bash
+      # 环境变量修改
+      # 修改前：
+      ENABLE_AUTO_SYNC=False
+      
+      # 修改后：
+      ENABLE_AUTO_SYNC=True
+      
+      # 重启后端服务
+      kill [PID] && nohup python3 -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload > backend.log 2>&1 &
+      
+      # 验证调度器状态
+      curl -s http://localhost:8000/api/repo/sync-scheduler/status
+      
+      # 输出应显示：
+      # {"enabled":true,"running":true,"interval_seconds":86400,...}
+      ```
 
 ## 三、关键变量名
 ### 环境变量 (.env)
@@ -379,4 +431,4 @@ ENABLE_AUTO_SYNC=True        # 是否启用自动同步
    - 生产环境禁用reload模式
 
 ---
-*最后更新: 2026-01-17 20:00:00*
+*最后更新: 2026-01-21 14:25:00*

@@ -1,0 +1,82 @@
+.container {
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+  min-height: 100vh;
+  background: #ffffff;
+}
+
+.filterCard,
+.actionsRow,
+.dataCard {
+  box-shadow: none !important;
+  border: none !important;
+  background: #ffffff !important;
+}
+
+.filterCard {
+  margin-bottom: 20px;
+}
+
+.actionsRow {
+  margin-bottom: 20px;
+}
+
+.dataCard {
+  margin-top: 20px;
+}
+
+/* 移除所有内部阴影和边框 */
+.ant-card,
+.ant-card-bordered,
+.ant-card-hoverable {
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* 数据表格容器自定义样式 */
+.dataTableContainer {
+  height: 500px;
+  overflow-y: auto;
+  border: 1px solid #f0f0f0;
+  border-radius: 4px;
+  margin-top: 8px;
+}
+
+.dataTableContainer::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.dataTableContainer::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.dataTableContainer::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.dataTableContainer::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .container {
+    padding: 10px;
+  }
+  
+  .actionsRow {
+    flex-direction: column;
+  }
+  
+  .actionsRow > * {
+    margin-bottom: 8px;
+  }
+  
+  .dataTableContainer {
+    height: 400px;
+  }
+}

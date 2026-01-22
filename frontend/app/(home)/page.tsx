@@ -34,7 +34,7 @@ export default function HomePage() {
     {
       icon: <CodeOutlined />,
       title: '个人程序',
-      link: '/resources',
+      link: '/personal-programs',
       color: '#fa8c16',
       external: false,
     },

@@ -54,11 +54,17 @@ export const userApi = {
   // 用户登录 - 不抛出错误，返回包含错误信息的对象
   login: async (username: string, studentId?: string) => {
     try {
-      const response = await request<{ success: boolean; user: any; token: string; message: string }>('/api/ai/auth/login', {
+      const response = await request<any>('/api/ai/auth/login', {
         method: 'POST',
         body: JSON.stringify({ username, student_id: studentId }),
       });
-      return response;
+      // 将新版本的响应结构转换为旧版本，以保持兼容
+      return {
+        success: response.success,
+        user: response.user,
+        token: response.access_token || response.token, // 优先使用access_token，如果不存在则使用token（旧版本）
+        message: response.message
+      };
     } catch (error) {
       // 返回一个包含错误信息的对象，而不是抛出错误
       return {
@@ -66,6 +72,31 @@ export const userApi = {
         user: null,
         token: '',
         message: error instanceof Error ? error.message : '登录失败',
+      };
+    }
+  },
+
+  // 获取当前用户信息
+  getCurrentUser: async () => {
+    try {
+      // 获取本地存储的token
+      const token = localStorage.getItem('ai_token');
+      if (!token) {
+        return { success: false, user: null, message: '未登录' };
+      }
+      
+      const response = await request<{ success: boolean; user: any }>('/api/ai/auth/me', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      return response;
+    } catch (error) {
+      return {
+        success: false,
+        user: null,
+        message: error instanceof Error ? error.message : '获取用户信息失败',
       };
     }
   },

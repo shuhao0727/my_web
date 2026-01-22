@@ -50,8 +50,8 @@ async def get_agents(
         search_term = f"%{search}%"
         query = query.filter(
             (AiAgent.name.ilike(search_term)) | 
-            (AiAgent.model.ilike(search_term) if AiAgent.model is not None else False) |
-            (AiAgent.app_id.ilike(search_term) if AiAgent.app_id is not None else False)
+            (AiAgent.model.ilike(search_term)) |
+            (AiAgent.app_id.ilike(search_term))
         )
     
     if api_type:
@@ -181,20 +181,23 @@ async def update_agent(
             raise HTTPException(status_code=400, detail="智能体名称已存在")
         agent.name = agent_data.name  # type: ignore
     
-    # 更新API类型（如果提供）
-    if agent_data.api_type is not None:
-        if agent_data.api_type not in ['deepseek', 'dify']:
-            raise HTTPException(status_code=400, detail="API类型必须是'deepseek'或'dify'")
-        agent.api_type = agent_data.api_type  # type: ignore
+        # 更新API类型（如果提供）
+        if agent_data.api_type is not None:
+            if agent_data.api_type not in ['deepseek', 'dify']:
+                raise HTTPException(status_code=400, detail="API类型必须是'deepseek'或'dify'")
+            agent.api_type = agent_data.api_type  # type: ignore
     
-    # 更新API密钥（如果提供）
-    if agent_data.api_key is not None:
-        agent.api_key = agent_data.api_key  # type: ignore
-        
-        # 如果更新了API密钥且是Dify类型，且app_id为空，尝试从新api_key提取
-        if agent.api_type == 'dify' and (not agent.app_id or str(agent.app_id).strip() == ''):
-            if agent_data.api_key.startswith('app-'):
-                agent.app_id = agent_data.api_key.replace('app-', '')  # type: ignore
+            # 更新API密钥（如果提供）
+            if agent_data.api_key is not None:
+                agent.api_key = agent_data.api_key  # type: ignore
+                
+                # 如果更新了API密钥且是Dify类型，且app_id为空，尝试从新api_key提取
+                app_id_value = agent.app_id
+                api_type_value = agent.api_type
+                # 获取实际的列值进行判断
+                if api_type_value == 'dify' and (app_id_value is None or (app_id_value is not None and str(app_id_value).strip() == '')):  # type: ignore
+                    if agent_data.api_key and agent_data.api_key.startswith('app-'):
+                        agent.app_id = agent_data.api_key.replace('app-', '')  # type: ignore
     
     # 更新基础URL（如果提供）
     if agent_data.base_url is not None:
@@ -308,17 +311,19 @@ async def test_agent_connection(agent_id: int, db: Session = Depends(get_ai_db))
             }
         
         # 根据智能体类型创建相应的客户端
-        if agent.api_type == 'dify':
+        agent_api_type = agent.api_type
+        if agent_api_type == 'dify':  # type: ignore
             from services.dify_client import DifyClient
             # 对于Dify，使用DifyClient，并传入app_id（如果存在）
-            app_id = str(agent.app_id) if agent.app_id else None
+            app_id_val = agent.app_id
+            app_id = str(app_id_val) if app_id_val is not None else None
             client = DifyClient(
                 api_key=api_key,
                 base_url=base_url,
                 app_id=app_id,
                 timeout=10
             )
-        elif agent.api_type == 'deepseek':
+        elif agent_api_type == 'deepseek':  # type: ignore
             from services.deepseek_client import DeepSeekClient
             client = DeepSeekClient(
                 api_key=api_key,

@@ -2,6 +2,12 @@
 FastAPI主应用入口 - 集成自动同步功能
 核心功能：静态文件服务、仓库同步API、自动同步调度器
 """
+import sys
+import os
+# 将backend目录添加到Python路径，以便导入routers等模块
+backend_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, backend_dir)
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -108,6 +114,30 @@ try:
 except ImportError as e:
     print(f"⚠️  AI智能体路由导入失败: {e}")
 
+# 新增XBK应用路由
+try:
+    from routers.xbk.applications import xbk_router
+    app.include_router(xbk_router, prefix="/api/xbk")  # 添加前缀
+    print("✅ XBK应用路由已加载")
+except ImportError as e:
+    print(f"⚠️  XBK应用路由导入失败: {e}")
+
+# 新增XBK数据处理路由
+try:
+    from routers.xbk.routes import data_router
+    app.include_router(data_router, prefix="/api/xbk")  # 添加前缀
+    print("✅ XBK数据处理路由已加载")
+except ImportError as e:
+    print(f"⚠️  XBK数据处理路由导入失败: {e}")
+
+# 新增XBK安全认证路由
+try:
+    from routers.xbk.auth import router as auth_router
+    app.include_router(auth_router, prefix="/api/xbk")  # 添加前缀
+    print("✅ XBK安全认证路由已加载")
+except ImportError as e:
+    print(f"⚠️  XBK安全认证路由导入失败: {e}")
+
 # 健康检查
 @app.get("/")
 async def root():
@@ -131,6 +161,5 @@ if __name__ == "__main__":
         app,
         host="0.0.0.0",
         port=8000,
-        reload=True,
-        reload_dirs=["."],
+        reload=False,
     )

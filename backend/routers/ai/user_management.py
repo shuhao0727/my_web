@@ -11,6 +11,7 @@ import io
 from datetime import datetime
 import hashlib
 import uuid
+import bcrypt
 
 from config.database import get_ai_db
 from models.ai_models import AiUser
@@ -55,8 +56,10 @@ def generate_default_password(student_id: str) -> str:
     return student_id
 
 def hash_password(password: str) -> str:
-    """密码哈希（SHA256）"""
-    return hashlib.sha256(password.encode()).hexdigest()
+    """使用bcrypt哈希密码（与auth.py保持一致）"""
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+    return hashed.decode('utf-8')
 
 # 用户管理API
 @router.get("/users", response_model=UserListResponse)
@@ -198,7 +201,7 @@ async def delete_user(
         raise HTTPException(status_code=404, detail="用户不存在")
     else:
         # 不允许删除admin用户
-        if user.username == "admin":
+        if user.username == "admin":  # type: ignore
             raise HTTPException(status_code=400, detail="不能删除管理员账户")
         
         db.delete(user)

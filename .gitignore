@@ -1,0 +1,107 @@
+# macOS
+.DS_Store
+._*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.pytest_cache/
+.cache
+.coverage
+.coverage.*
+.hypothesis/
+.pytest_cache/
+*.cover
+*.py,cover
+htmlcov/
+.coverage
+.tox/
+.tox/
+venv/
+env/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.next/
+.next/**
+*.log
+
+# Database
+*.db
+*.db-journal
+*.sqlite3
+
+# Logs
+*.log
+backend_service.log
+frontend_service.log
+backend.log
+frontend.log
+school_courses.log
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.temp
+
+# Project specific
+xbk高一/样例/
+xbk高一/school_courses.db
+xbk高一/school_courses.log
+backend/.env
+backend/backend.log
+backend/backend_service.log
+backend/xbk.db
+backend/znt.db
+backend/my_web.db
+backend/school_courses.log
+frontend/frontend.log
+frontend/frontend_service.log
+content/2-My-notes/.DS_Store
+docs/.DS_Store
+
+# Docker
+docker-compose.override.yml
+
+# Deployment
+.dockerignore

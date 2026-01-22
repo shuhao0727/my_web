@@ -32,10 +32,10 @@ const Header: React.FC = () => {
       link: '/teaching',
     },
     {
-      key: 'resources',
+      key: 'personal-programs',
       label: '个人程序',
       icon: <CodeOutlined />,
-      link: '/resources',
+      link: '/personal-programs',
     },
     {
       key: 'blog',

@@ -3,7 +3,7 @@ AI智能体 - 聊天路由
 """
 from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import Optional
 import uuid
 from datetime import datetime
 import json
@@ -19,7 +19,7 @@ from services.dify_client import DifyClient
 from services.api_client import ApiCallRecorder
 
 # 导入simple_ai_chat模块
-from services.simple_ai_chat import chat_with_agent_id
+from services.simple_ai_chat import chat_with_agent_id, test_agent_connection
 
 # 请求/响应模型
 class ChatRequest(BaseModel):
@@ -31,7 +31,7 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     success: bool
     conversation: dict
-    messages: List[dict]
+    messages: list[dict]
     message: str
 
 logger = logging.getLogger(__name__)
@@ -231,74 +231,56 @@ async def test_agent_api(
     agent_id: int,
     db: Session = Depends(get_ai_db)
 ):
-    """测试智能体API连通性"""
+    """测试智能体API连通性 - 使用新的test_agent_connection函数"""
     agent = db.query(AiAgent).filter(AiAgent.id == agent_id).first()
     
     if not agent:
         raise HTTPException(status_code=404, detail="智能体不存在")
     
-    test_message = "你好，测试消息"
-    test_response = ""
-    test_status = "unknown"
-    
     try:
-        if str(agent.api_type) == "mock":
-            test_response = f"模拟回复：我是{agent.name}，已收到测试消息"
-            test_status = "success"
-        elif str(agent.api_type) == "echo":
-            test_response = f"回声回复：{test_message}"
-            test_status = "success"
-        elif str(agent.api_type) == "deepseek":
-            # 测试DeepSeek API
-            # 获取字段值，确保是字符串类型
-            api_key = str(agent.api_key) if agent.api_key is not None else ""
-            base_url = str(agent.base_url) if agent.base_url is not None else "https://api.deepseek.com"
-            model = str(agent.model) if agent.model is not None else "deepseek-chat"
-            
-            client = DeepSeekClient(
-                api_key=api_key,
-                base_url=base_url,
-                model=model,
-                temperature=0.7,
-                max_tokens=2000,
-                timeout=30
-            )
-            test_result = await client.test_connection()
-            test_response = test_result.get("test_response", "连接测试完成")
-            test_status = "success" if test_result.get("success") else "failed"
-        elif str(agent.api_type) == "dify":
-            # 测试Dify API
-            # 获取字段值，确保是字符串类型
-            api_key = str(agent.api_key) if agent.api_key is not None else ""
-            base_url = str(agent.base_url) if agent.base_url is not None else "http://wangsh.cn:6606/v1"
-            app_id = str(agent.app_id) if agent.app_id is not None else None
-            
-            client = DifyClient(
-                api_key=api_key,
-                base_url=base_url,
-                app_id=app_id,
-                timeout=30
-            )
-            test_result = await client.test_connection()
-            test_response = test_result.get("test_response", "连接测试完成")
-            test_status = "success" if test_result.get("success") else "failed"
-        else:
-            test_response = f"未知API类型：{agent.api_type}，无法测试"
-            test_status = "unsupported"
-    except Exception as e:
-        test_response = f"测试过程中出现错误：{str(e)}"
-        test_status = "error"
-    
-    return {
-        "success": True,
-        "agent": {
+        # 构建智能体配置，处理可能的空值
+        config = {
             "id": agent.id,
-            "name": agent.name,
-            "api_type": agent.api_type,
-            "is_active": agent.is_active,
-        },
-        "test_message": test_message,
-        "response": test_response,
-        "tokens": len(test_response) // 4,
-        "status": test_status
-    }
+            "name": str(agent.name) if agent.name is not None else "",
+            "api_type": str(agent.api_type) if agent.api_type is not None else "",
+            "api_key": str(agent.api_key) if agent.api_key is not None else "",
+            "base_url": str(agent.base_url) if agent.base_url is not None else "",
+            "model": str(agent.model) if agent.model is not None else "",
+            "app_id": str(agent.app_id) if agent.app_id is not None else "",
+            "is_active": bool(agent.is_active) if agent.is_active is not None else False
+        }
+        
+        # 使用新的test_agent_connection函数进行测试
+        test_result = await test_agent_connection(config)
+        
+        # 构建响应
+        return {
+            "success": True,
+            "agent": {
+                "id": agent.id,
+                "name": agent.name,
+                "api_type": agent.api_type,
+                "is_active": agent.is_active,
+            },
+            "test_message": "你好，测试消息",
+            "response": test_result.get("test_response", test_result.get("message", "连接测试完成")),
+            "tokens": len(test_result.get("test_response", test_result.get("message", ""))) // 4,
+            "status": "success" if test_result.get("success") else "failed",
+            "test_result": test_result  # 包含详细的测试结果信息
+        }
+    except Exception as e:
+        logger.error(f"测试智能体API连接失败: {e}")
+        return {
+            "success": True,
+            "agent": {
+                "id": agent.id,
+                "name": agent.name,
+                "api_type": agent.api_type,
+                "is_active": agent.is_active,
+            },
+            "test_message": "你好，测试消息",
+            "response": f"测试过程中出现错误：{str(e)}",
+            "tokens": 1,
+            "status": "error",
+            "error": str(e)
+        }

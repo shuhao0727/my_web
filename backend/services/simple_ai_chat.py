@@ -110,6 +110,182 @@ def save_config_to_temp(config: Dict[str, Any]) -> str:
     print(f"配置已保存到临时文件: {temp_path}")
     return temp_path
 
+async def test_agent_connection(config: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    测试智能体API连接（不保存消息到数据库）
+    
+    Args:
+        config: 智能体配置
+        
+    Returns:
+        测试结果字典，包含success、message、error等字段
+    """
+    api_type = config.get("api_type", "").lower()
+    agent_name = config.get("name", "未知智能体")
+    
+    print(f"[TEST] 测试智能体连接: {agent_name} ({api_type})")
+    
+    try:
+        if api_type == "deepseek":
+            # DeepSeek API配置
+            api_key = config.get("api_key", "")
+            base_url = config.get("base_url", "https://api.deepseek.com")
+            model = config.get("model", "deepseek-chat")
+            
+            if not api_key:
+                return {
+                    "success": False,
+                    "message": "DeepSeek API密钥未配置",
+                    "error": "API密钥为空"
+                }
+            
+            # 检查是否为SiliconFlow API
+            if "siliconflow.cn" in base_url.lower():
+                print(f"[TEST] 检测到SiliconFlow API，使用专用测试")
+                import httpx
+                
+                headers = {
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                }
+                
+                # 构建测试请求数据
+                data = {
+                    "model": model,
+                    "messages": [
+                        {"role": "system", "content": f"你是{agent_name}，一个AI助手"},
+                        {"role": "user", "content": "你好，测试消息"}
+                    ],
+                    "temperature": 0.7,
+                    "max_tokens": 100,
+                    "stream": False
+                }
+                
+                async with httpx.AsyncClient(timeout=15.0) as client:
+                    response = await client.post(
+                        f"{base_url}/v1/chat/completions",
+                        headers=headers,
+                        json=data
+                    )
+                    
+                    if response.status_code == 401:
+                        return {
+                            "success": False,
+                            "message": "SiliconFlow API认证失败 (401)",
+                            "error": "API密钥无效或已过期",
+                            "status_code": 401,
+                            "response_text": response.text[:200]
+                        }
+                    elif response.status_code == 500:
+                        return {
+                            "success": False,
+                            "message": f"SiliconFlow服务器内部错误 (500)",
+                            "error": "服务器处理请求时出错，可能是模型不存在或参数错误",
+                            "status_code": 500,
+                            "response_text": response.text[:200]
+                        }
+                    elif response.status_code != 200:
+                        return {
+                            "success": False,
+                            "message": f"SiliconFlow API请求失败 ({response.status_code})",
+                            "error": f"HTTP {response.status_code}",
+                            "status_code": response.status_code,
+                            "response_text": response.text[:200]
+                        }
+                    
+                    result = response.json()
+                    if "choices" in result and len(result["choices"]) > 0:
+                        content = result["choices"][0]["message"]["content"]
+                        return {
+                            "success": True,
+                            "message": "SiliconFlow API连接成功",
+                            "test_response": content[:200] + "..." if len(content) > 200 else content
+                        }
+                    else:
+                        return {
+                            "success": False,
+                            "message": "SiliconFlow API响应格式异常",
+                            "error": "响应中缺少choices字段",
+                            "response_data": str(result)[:200]
+                        }
+            else:
+                # 使用标准的DeepSeekClient进行测试
+                client = DeepSeekClient(
+                    api_key=api_key,
+                    base_url=base_url,
+                    model=model,
+                    temperature=0.7,
+                    max_tokens=100,
+                    timeout=15
+                )
+                
+                test_response = await client.chat("你好，测试消息")
+                return {
+                    "success": True,
+                    "message": "DeepSeek API连接成功",
+                    "test_response": test_response[:200] + "..." if len(test_response) > 200 else test_response
+                }
+            
+        elif api_type == "dify":
+            # Dify API配置
+            api_key = config.get("api_key", "")
+            base_url = config.get("base_url", "http://wangsh.cn:6606/v1")
+            app_id = config.get("app_id", "")
+            
+            if not api_key:
+                return {
+                    "success": False,
+                    "message": "Dify API密钥未配置",
+                    "error": "API密钥为空"
+                }
+            if not app_id:
+                return {
+                    "success": False,
+                    "message": "Dify应用ID未配置",
+                    "error": "应用ID为空"
+                }
+            
+            client = DifyClient(
+                api_key=api_key,
+                base_url=base_url,
+                app_id=app_id,
+                timeout=15
+            )
+            
+            test_response = await client.chat("你好，测试消息", user_id="test_user")
+            return {
+                "success": True,
+                "message": "Dify API连接成功",
+                "test_response": test_response[:200] + "..." if len(test_response) > 200 else test_response
+            }
+            
+        elif api_type == "mock" or api_type == "echo":
+            # 模拟API，始终成功
+            if api_type == "mock":
+                test_response = f"[模拟回复] 我是{agent_name}，测试连接成功"
+            else:
+                test_response = f"[回声回复] 你好，测试消息"
+            
+            return {
+                "success": True,
+                "message": f"{api_type.capitalize()} API连接成功",
+                "test_response": test_response
+            }
+                
+        else:
+            return {
+                "success": False,
+                "message": f"不支持的API类型: {api_type}",
+                "error": "API类型不受支持"
+            }
+            
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"API连接测试失败: {str(e)}",
+            "error": str(e)
+        }
+
 async def chat_with_agent(config: Dict[str, Any], message: str, user_id: Optional[int] = None) -> str:
     """
     使用智能体配置与AI聊天
@@ -127,6 +303,12 @@ async def chat_with_agent(config: Dict[str, Any], message: str, user_id: Optiona
     
     print(f"正在使用智能体: {agent_name} ({api_type})")
     
+    # 调试信息
+    print(f"[DEBUG] 智能体配置检查:")
+    print(f"  - API类型: {api_type}")
+    print(f"  - 名称: {agent_name}")
+    print(f"  - 用户ID: {user_id}")
+    
     try:
         if api_type == "deepseek":
             # DeepSeek API配置
@@ -134,24 +316,90 @@ async def chat_with_agent(config: Dict[str, Any], message: str, user_id: Optiona
             base_url = config.get("base_url", "https://api.deepseek.com")
             model = config.get("model", "deepseek-chat")
             
+            # 调试信息
+            print(f"[DEBUG] DeepSeek配置:")
+            print(f"  - Base URL: {base_url}")
+            print(f"  - 模型: {model}")
+            if api_key:
+                # 部分隐藏API密钥以保护隐私
+                masked_key = api_key[:5] + "..." + api_key[-5:] if len(api_key) > 10 else api_key
+                print(f"  - API密钥 (部分隐藏): {masked_key}")
+            else:
+                print("  - API密钥: 为空或未设置")
+            
             if not api_key:
                 return "错误: DeepSeek API密钥未配置"
             
-            client = DeepSeekClient(
-                api_key=api_key,
-                base_url=base_url,
-                model=model,
-                temperature=0.7,
-                max_tokens=2000,
-                timeout=30
-            )
-            
-            # 调用DeepSeek API
-            response = await client.chat(
-                user_message=message,
-                system_prompt=f"你是{agent_name}，一个AI助手"
-            )
-            return response
+            # 特殊处理SiliconFlow API
+            # SiliconFlow使用Bearer认证，但DeepSeekClient默认设置可能不正确
+            # 这里使用自定义的httpx客户端来处理SiliconFlow
+            if "siliconflow.cn" in base_url.lower():
+                print(f"[DEBUG] 检测到SiliconFlow API，使用自定义请求处理")
+                import httpx
+                import json
+                
+                headers = {
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                }
+                
+                # 构建请求数据
+                data = {
+                    "model": model,
+                    "messages": [
+                        {"role": "user", "content": message}
+                    ],
+                    "temperature": 0.7,
+                    "max_tokens": 2000,
+                    "stream": False
+                }
+                
+                # 添加系统提示
+                system_prompt = f"你是{agent_name}，一个AI助手"
+                if system_prompt:
+                    data["messages"].insert(0, {"role": "system", "content": system_prompt})
+                
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    response = await client.post(
+                        f"{base_url}/v1/chat/completions",
+                        headers=headers,
+                        json=data
+                    )
+                    
+                    if response.status_code == 401:
+                        print(f"[DEBUG] SiliconFlow 401错误详情:")
+                        print(f"  请求URL: {response.url}")
+                        print(f"  请求头: {dict(response.request.headers)}")
+                        print(f"  响应头: {dict(response.headers)}")
+                        print(f"  响应体: {response.text}")
+                        return f"SiliconFlow API认证失败 (401): 请检查API密钥是否正确"
+                    elif response.status_code == 500:
+                        return f"SiliconFlow服务器内部错误 (500): {response.text}"
+                    elif response.status_code != 200:
+                        return f"SiliconFlow API请求失败: {response.status_code} - {response.text}"
+                    
+                    result = response.json()
+                    if "choices" in result and len(result["choices"]) > 0:
+                        return result["choices"][0]["message"]["content"]
+                    else:
+                        return f"SiliconFlow API响应格式异常: {json.dumps(result, ensure_ascii=False)}"
+            else:
+                # 使用标准的DeepSeekClient
+                client = DeepSeekClient(
+                    api_key=api_key,
+                    base_url=base_url,
+                    model=model,
+                    temperature=0.7,
+                    max_tokens=2000,
+                    timeout=30
+                )
+                
+                # 调用DeepSeek API
+                response = await client.chat(
+                    user_message=message,
+                    system_prompt=f"你是{agent_name}，一个AI助手"
+                )
+                return response
             
         elif api_type == "dify":
             # Dify API配置

@@ -464,6 +464,36 @@ tail -f /Volumes/文件/4-实用代码/my_web/frontend/frontend.log
   2. 学号为可选，可不填写
   3. 检查用户状态(is_active=true)
 
+#### 登录API返回404但数据库中存在用户
+- **症状**: 使用正确用户名和学号登录时，后端返回404 Not Found，但数据库中存在该用户记录
+- **原因**: 
+  1. 后端服务未正确重启，存在多个uvicorn进程占用端口
+  2. 路由注册问题，auth路由未正确加载
+  3. 数据库连接问题
+- **解决**:
+  1. 检查后端服务状态：`ps aux | grep uvicorn`
+  2. 强制停止所有uvicorn进程：`pkill -9 -f "uvicorn" && pkill -9 -f "python.*main:app"`
+  3. 重启后端服务：`cd /Volumes/文件/4-实用代码/my_web/backend && python3 -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload`
+  4. 验证服务启动：`curl -s http://localhost:8000/`
+  5. 验证AI模块路由：`curl -s http://localhost:8000/api/ai/`
+- **验证方法**:
+  1. 使用admin用户登录：`curl -X POST "http://localhost:8000/api/ai/auth/login" -H "Content-Type: application/json" -d '{"username": "admin", "student_id": "wangshu0727"}'`
+  2. 应返回成功响应，包含用户信息和token
+- **关键命令**:
+  ```bash
+  # 停止所有后端进程
+  pkill -9 -f "uvicorn"
+  pkill -9 -f "python.*main:app"
+  
+  # 重启后端服务
+  cd /Volumes/文件/4-实用代码/my_web/backend
+  python3 -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload 2>&1 | head -50
+  
+  # 验证服务
+  curl -s http://localhost:8000/health
+  curl -s http://localhost:8000/api/ai/
+  ```
+
 #### API调用失败
 - **症状**: 智能体无响应或报错
 - **解决**:
@@ -1205,6 +1235,103 @@ const formatTimeForDisplay = (dateInput: Date | string): string => {
 3. **时区指定**：使用`timeZone: 'Asia/Shanghai'`确保正确时区转换
 4. **完整日期时间**：显示年月日时分秒，便于用户理解时间关系
 
+### v2.8 (2026-01-22) - 登录安全升级
+#### 问题背景
+- **用户反馈**：当前AI智能体登录系统不够安全，存在安全风险
+- **原系统问题**：使用base64编码的简单token（无过期机制），密码使用SHA256哈希（易受彩虹表攻击）
+- **风险分析**：令牌易被解码，密码存储不安全，缺乏现代安全机制
+
+#### 安全升级方案
+##### 1. 密码存储安全升级
+- **旧系统**：SHA256哈希（无盐，易受彩虹表攻击）
+- **新系统**：bcrypt哈希（自适应成本，自动加盐，抗暴力破解）
+- **实现**：
+  ```python
+  def hash_password(password: str) -> str:
+      salt = bcrypt.gensalt()
+      hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+      return hashed.decode('utf-8')
+  
+  def verify_password(plain_password: str, hashed_password: str) -> bool:
+      # 支持bcrypt和SHA256（向后兼容）
+      try:
+          if bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8')):
+              return True
+      except:
+          pass
+      # SHA256兼容验证
+      try:
+          sha256_hash = hashlib.sha256(plain_password.encode('utf-8')).hexdigest()
+          return sha256_hash == hashed_password
+      except:
+          return False
+  ```
+
+##### 2. 认证令牌安全升级
+- **旧系统**：base64编码的简单token（无过期，可被解码）
+- **新系统**：JWT标准令牌（HS256签名，自动过期检查）
+- **实现**：
+  ```python
+  # 访问令牌（7天有效期）
+  ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7
+  # 刷新令牌（30天有效期）
+  REFRESH_TOKEN_EXPIRE_DAYS = 30
+  
+  def create_access_token(data: dict) -> str:
+      to_encode = data.copy()
+      expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+      to_encode.update({"exp": expire, "type": "access"})
+      return jwt.encode(to_encode, JWT_SECRET_KEY, algorithm="HS256")
+  ```
+
+##### 3. 双重验证兼容系统
+- **向后兼容**：支持密码验证和学号验证两种方式
+- **智能升级**：使用学号验证登录的旧用户，系统自动将其密码升级为bcrypt哈希
+- **实现逻辑**：
+  ```python
+  # 验证逻辑：优先密码，次之学号
+  if request.password and request.password.strip():
+      authenticated = verify_password(request.password, str(user.password_hash))
+  elif request.student_id and request.student_id.strip():
+      authenticated = (str(user.student_id) == request.student_id.strip())
+      # 登录成功后自动升级密码哈希
+      default_password = str(user.student_id)[-6:] if len(str(user.student_id)) >= 6 else str(user.student_id)
+      user.password_hash = hash_password(default_password)
+  ```
+
+##### 4. 安全特性增强
+- **防用户名枚举**：无论用户名是否存在，都返回相同错误信息"用户名或密码不正确"
+- **环境配置**：JWT密钥通过环境变量`JWT_SECRET_KEY`配置，支持生产环境安全部署
+- **依赖管理**：新增`pyjwt`和`bcrypt`包到`requirements.txt`
+- **前端适配**：更新API客户端以兼容新旧令牌格式
+
+#### 实施文件修改
+1. **后端认证模块** (`backend/routers/ai/auth.py`) - 完全重写，实现JWT+bcrypt
+2. **用户管理模块** (`backend/routers/ai/user_management.py`) - 更新为bcrypt哈希
+3. **前端API客户端** (`frontend/lib/aiApi.ts`) - 适配新令牌格式
+4. **依赖安装** (`backend/requirements.txt`) - 添加`pyjwt`和`bcrypt`
+
+#### 验证结果
+1. **兼容性测试**：旧用户"张三"（学号20230001）可以使用学号正常登录
+2. **密码升级**：旧用户首次使用学号登录后，密码自动升级为bcrypt哈希
+3. **新用户登录**：可以使用密码（学号后6位）登录
+4. **令牌验证**：JWT令牌包含过期时间，前端正确解析
+5. **安全测试**：bcrypt哈希有效抵抗彩虹表攻击
+
+#### 安全优势
+- ✅ **密码安全**：bcrypt哈希提供自适应计算成本，有效防御GPU/ASIC攻击
+- ✅ **令牌安全**：JWT支持自动过期和签名验证，防止令牌篡改
+- ✅ **防枚举攻击**：统一错误信息防止用户名枚举
+- ✅ **生产就绪**：JWT密钥可通过环境变量配置，支持安全部署
+- ✅ **向后兼容**：新旧用户无缝过渡，自动升级密码哈希
+- ✅ **双重验证**：支持密码和学号两种验证方式，满足不同场景需求
+
+#### 技术要点
+1. **bcrypt优势**：自动加盐，计算成本可调（默认12轮），有效防御暴力破解
+2. **JWT标准**：行业标准令牌格式，支持过期时间、签名验证、自定义载荷
+3. **环境安全**：密钥通过环境变量管理，避免硬编码安全问题
+4. **渐进升级**：旧用户密码在首次登录时自动升级，无需手动干预
+
 ### 未来计划
 - 数据管理系统完整实现
 - 更多AI服务集成
@@ -1300,8 +1427,8 @@ sqlite3 backend/znt.db                # 连接数据库
 ```
 
 ---
-**文档版本**: v2.7  
-**最后更新**: 2026-01-21  
+**文档版本**: v2.8  
+**最后更新**: 2026-01-22  
 **适用版本**: 当前生产环境  
 **文档状态**: ✅ 已完成合并和更新  
 
@@ -1316,6 +1443,7 @@ sqlite3 backend/znt.db                # 连接数据库
 - **DataManagement组件文件拆分重构** (v2.5) - 将900+行的大文件拆分为三个模块化文件，提升代码可维护性
 - **登录验证控制台错误修复** (v2.6) - 修复前端登录验证导致的控制台错误，增强用户体验和系统安全性
 - **时间显示不一致问题修复** (v2.7) - 修复管理员后台时间显示不一致问题，UTC时间正确转换为上海时区
+- **登录安全升级** (v2.8) - 采用JWT令牌和bcrypt密码哈希，提供企业级安全认证，同时保持向后兼容
 
 **已删除冗余文档**:
 - `ai-agent-data-management-design.md` (详细版，保留简化版)

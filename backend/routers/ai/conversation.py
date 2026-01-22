@@ -213,16 +213,16 @@ async def update_conversation(
         raise HTTPException(status_code=404, detail="对话不存在")
     
     if title is not None:
-        conversation.title = title
+        conversation.title = title  # type: ignore
     
     if end_time is not None:
-        conversation.end_time = end_time
+        conversation.end_time = end_time  # type: ignore
     
     if total_messages is not None:
-        conversation.total_messages = total_messages
+        conversation.total_messages = total_messages  # type: ignore
     
     if total_tokens is not None:
-        conversation.total_tokens = total_tokens
+        conversation.total_tokens = total_tokens  # type: ignore
     
     db.commit()
     db.refresh(conversation)
