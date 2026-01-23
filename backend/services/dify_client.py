@@ -197,13 +197,127 @@ class DifyClient(ApiClient):
             连接测试结果
         """
         try:
-            # 发送一个简单的测试消息
-            test_response = await self.chat("你好", "test_user")
-            return {
-                "success": True,
-                "message": "Dify API连接成功",
-                "test_response": test_response[:100] + "..." if len(test_response) > 100 else test_response
-            }
+            # 首先测试API基础连接
+            try:
+                response = await self.client.get(self.base_url)
+                if response.status_code != 200:
+                    # Dify API可能返回其他状态码，但端点可访问
+                    if response.status_code >= 400 and response.status_code < 500:
+                        return {
+                            "success": False,
+                            "error": f"API端点不可达或配置错误: HTTP {response.status_code}",
+                            "message": "Dify API连接失败"
+                        }
+            except Exception as e:
+                return {
+                    "success": False,
+                    "error": f"无法连接到API端点: {str(e)}",
+                    "message": "Dify API连接失败"
+                }
+            
+            # 然后测试API密钥有效性 - 发送一个极简的测试消息
+            try:
+                endpoint = "/chat-messages"
+                test_data = {
+                    "query": "Hello",
+                    "user": "test_user",
+                    "response_mode": "blocking",
+                    "inputs": {}
+                }
+                
+                response = await self.client.post(
+                    f"{self.base_url}{endpoint}",
+                    json=test_data,
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json"
+                    },
+                    timeout=10
+                )
+                
+                # 分析响应
+                if response.status_code == 401:
+                    return {
+                        "success": False,
+                        "error": "API密钥无效或已过期",
+                        "message": "Dify API密钥验证失败"
+                    }
+                elif response.status_code == 403:
+                    return {
+                        "success": False,
+                        "error": "API密钥权限不足",
+                        "message": "Dify API权限验证失败"
+                    }
+                elif response.status_code == 404:
+                    return {
+                        "success": False,
+                        "error": "应用不存在或API端点错误",
+                        "message": "Dify API配置错误"
+                    }
+                elif response.status_code >= 400 and response.status_code < 500:
+                    # 尝试解析错误信息
+                    try:
+                        error_data = response.json()
+                        error_msg = error_data.get('message', error_data.get('error', f"HTTP {response.status_code}"))
+                        return {
+                            "success": False,
+                            "error": f"Dify API客户端错误: {error_msg}",
+                            "message": "Dify API连接失败"
+                        }
+                    except:
+                        return {
+                            "success": False,
+                            "error": f"API客户端错误: HTTP {response.status_code}",
+                            "message": "Dify API连接失败"
+                        }
+                elif response.status_code >= 500:
+                    return {
+                        "success": False,
+                        "error": f"API服务器错误: HTTP {response.status_code}",
+                        "message": "Dify API服务器错误"
+                    }
+                elif response.status_code == 200:
+                    try:
+                        result = response.json()
+                        # Dify返回的数据结构检查
+                        if "answer" in result or "message" in result:
+                            return {
+                                "success": True,
+                                "message": "Dify API连接成功且API密钥有效",
+                                "test_response": "API验证通过"
+                            }
+                        else:
+                            return {
+                                "success": True,
+                                "message": "Dify API连接成功",
+                                "test_response": f"HTTP {response.status_code} 响应正常"
+                            }
+                    except:
+                        return {
+                            "success": True,
+                            "message": "Dify API连接成功",
+                            "test_response": f"HTTP {response.status_code} 响应正常"
+                        }
+                else:
+                    return {
+                        "success": False,
+                        "error": f"未知响应: HTTP {response.status_code}",
+                        "message": "Dify API连接异常"
+                    }
+                    
+            except httpx.TimeoutException:
+                return {
+                    "success": False,
+                    "error": "API请求超时",
+                    "message": "Dify API连接超时"
+                }
+            except Exception as e:
+                return {
+                    "success": False,
+                    "error": str(e),
+                    "message": "Dify API连接测试异常"
+                }
+                
         except Exception as e:
             return {
                 "success": False,

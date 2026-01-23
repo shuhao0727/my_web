@@ -42,15 +42,16 @@ async def lifespan(app: FastAPI):
         ]
     )
     
-    # 启动自动同步调度器
-    try:
-        from scheduler.sync_scheduler import repo_sync_scheduler
-        if repo_sync_scheduler.start():
-            print("✅ 仓库自动同步调度器已启动")
-        else:
-            print("⚠️  仓库自动同步调度器未启动（可能已禁用或已在运行）")
-    except Exception as e:
-        print(f"❌ 启动自动同步调度器失败: {e}")
+    # 启动自动同步调度器（临时禁用以避免启动阻塞）
+    # try:
+    #     from scheduler.sync_scheduler import repo_sync_scheduler
+    #     if repo_sync_scheduler.start():
+    #         print("✅ 仓库自动同步调度器已启动")
+    #     else:
+    #         print("⚠️  仓库自动同步调度器未启动（可能已禁用或已在运行）")
+    # except Exception as e:
+    #     print(f"❌ 启动自动同步调度器失败: {e}")
+    print("⚠️  仓库自动同步调度器已临时禁用（避免网络连接阻塞）")
     
     yield
     

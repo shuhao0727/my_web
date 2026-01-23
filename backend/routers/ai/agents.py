@@ -341,9 +341,10 @@ async def test_agent_connection(agent_id: int, db: Session = Depends(get_ai_db))
         # 测试连接
         test_result = await client.test_connection()
         
+        # 根据实际测试结果返回，而不是总是返回成功
         return {
-            "success": True,
-            "message": "连接测试成功",
+            "success": test_result.get("success", False),
+            "message": test_result.get("message", "连接测试完成"),
             "test_result": test_result,
             "agent": {
                 "id": agent.id,

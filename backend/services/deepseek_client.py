@@ -196,13 +196,184 @@ class DeepSeekClient(ApiClient):
             连接测试结果
         """
         try:
-            # 发送一个简单的测试消息
-            test_response = await self.chat("你好")
-            return {
-                "success": True,
-                "message": "DeepSeek API连接成功",
-                "test_response": test_response[:100] + "..." if len(test_response) > 100 else test_response
-            }
+            # SiliconFlow等第三方API网关的特殊处理
+            is_siliconflow = "siliconflow" in self.base_url.lower()
+            
+            # 首先测试API基础连接（允许非200状态码，因为某些API根路径可能返回404但接口仍可用）
+            try:
+                response = await self.client.get(self.base_url, timeout=5)
+                if response.status_code != 200:
+                    if is_siliconflow:
+                        logger.info(f"SiliconFlow API端点GET请求返回HTTP {response.status_code}（正常），继续测试")
+                    else:
+                        logger.info(f"API端点GET请求返回HTTP {response.status_code}，将继续测试POST请求")
+            except Exception as e:
+                logger.warning(f"API端点GET请求异常（可能正常）: {str(e)}，将继续测试POST请求")
+            
+            # 测试API密钥有效性 - 发送一个极简的测试消息
+            try:
+                endpoint = "/chat/completions"
+                test_data = {
+                    "model": self.model,
+                    "messages": [{"role": "user", "content": "Hello"}],
+                    "max_tokens": 1
+                }
+                
+                # 使用单独的客户端，避免继承可能错误的headers
+                async with httpx.AsyncClient(timeout=10) as client:
+                    headers = {
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json"
+                    }
+                    
+                    response = await client.post(
+                        f"{self.base_url}{endpoint}",
+                        json=test_data,
+                        headers=headers
+                    )
+                    
+                    # 分析响应
+                    if response.status_code == 401:
+                        # 401明确表示API密钥无效
+                        return {
+                            "success": False,
+                            "error": "API密钥无效或已过期",
+                            "message": "DeepSeek API密钥验证失败",
+                            "status_code": response.status_code
+                        }
+                    elif response.status_code == 403:
+                        # 403表示权限不足
+                        return {
+                            "success": False,
+                            "error": "API密钥权限不足",
+                            "message": "DeepSeek API权限验证失败",
+                            "status_code": response.status_code
+                        }
+                    elif response.status_code == 400:
+                        # 400错误需要分析具体原因
+                        try:
+                            error_data = response.json()
+                            error_msg = error_data.get('error', {}).get('message', str(error_data))
+                            
+                            # 如果是模型不存在错误，API密钥可能是有效的
+                            if 'model does not exist' in str(error_msg).lower() or 'model not found' in str(error_msg).lower():
+                                return {
+                                    "success": True if is_siliconflow else False,
+                                    "error": f"模型不存在或配置错误: {error_msg}",
+                                    "message": "API连接正常但模型配置错误",
+                                    "status_code": response.status_code,
+                                    "note": "API密钥可能有效，但需要检查模型名称"
+                                }
+                            else:
+                                return {
+                                    "success": False,
+                                    "error": f"API请求参数错误: {error_msg}",
+                                    "message": "DeepSeek API配置错误",
+                                    "status_code": response.status_code
+                                }
+                        except:
+                            return {
+                                "success": False,
+                                "error": "API请求参数错误",
+                                "message": "DeepSeek API配置错误",
+                                "status_code": response.status_code
+                            }
+                    elif response.status_code == 404:
+                        # 404表示端点不存在
+                        return {
+                            "success": False,
+                            "error": "API端点不存在或路径错误",
+                            "message": "DeepSeek API端点配置错误",
+                            "status_code": response.status_code
+                        }
+                    elif response.status_code >= 400 and response.status_code < 500:
+                        # 其他4xx错误
+                        error_msg = f"HTTP {response.status_code}"
+                        try:
+                            error_data = response.json()
+                            error_msg = f"HTTP {response.status_code}: {str(error_data)}"
+                        except:
+                            pass
+                        
+                        # 对于SiliconFlow，某些4xx错误可能只是配置问题而不是连接问题
+                        if is_siliconflow and response.status_code in [402, 429]:
+                            return {
+                                "success": False,
+                                "error": f"SiliconFlow API限制: {error_msg}",
+                                "message": "API连接正常但受限制",
+                                "status_code": response.status_code
+                            }
+                        else:
+                            return {
+                                "success": False,
+                                "error": f"API客户端错误: {error_msg}",
+                                "message": "DeepSeek API连接失败",
+                                "status_code": response.status_code
+                            }
+                    elif response.status_code >= 500:
+                        # 5xx服务器错误
+                        return {
+                            "success": False,
+                            "error": f"API服务器错误: HTTP {response.status_code}",
+                            "message": "DeepSeek API服务器错误",
+                            "status_code": response.status_code
+                        }
+                    elif response.status_code == 200:
+                        # 200成功响应
+                        try:
+                            result = response.json()
+                            if "choices" in result and len(result["choices"]) > 0:
+                                return {
+                                    "success": True,
+                                    "message": "DeepSeek API连接成功且API密钥有效",
+                                    "test_response": "API验证通过",
+                                    "status_code": response.status_code
+                                }
+                            else:
+                                # 响应格式异常但HTTP 200
+                                return {
+                                    "success": True,
+                                    "message": "DeepSeek API连接成功（响应格式异常）",
+                                    "test_response": f"响应格式: {result.keys() if isinstance(result, dict) else 'unknown'}",
+                                    "status_code": response.status_code
+                                }
+                        except Exception as json_error:
+                            # JSON解析失败但HTTP 200
+                            return {
+                                "success": True,
+                                "message": "DeepSeek API连接成功（JSON解析失败）",
+                                "test_response": f"HTTP {response.status_code} 响应正常",
+                                "status_code": response.status_code,
+                                "warning": f"JSON解析错误: {str(json_error)}"
+                            }
+                    else:
+                        # 其他状态码
+                        return {
+                            "success": False,
+                            "error": f"未知响应: HTTP {response.status_code}",
+                            "message": "DeepSeek API连接异常",
+                            "status_code": response.status_code
+                        }
+                        
+            except httpx.TimeoutException:
+                return {
+                    "success": False,
+                    "error": "API请求超时（10秒）",
+                    "message": "DeepSeek API连接超时"
+                }
+            except httpx.ConnectError as e:
+                return {
+                    "success": False,
+                    "error": f"无法连接到API服务器: {str(e)}",
+                    "message": "DeepSeek API连接失败"
+                }
+            except Exception as e:
+                return {
+                    "success": False,
+                    "error": str(e),
+                    "message": "DeepSeek API连接测试异常"
+                }
+                
         except Exception as e:
             return {
                 "success": False,
