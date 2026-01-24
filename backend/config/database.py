@@ -7,8 +7,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
 
-# 默认数据库URL - 用于用户、文档等
-DEFAULT_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./my_web.db")
+# 默认数据库URL - 用于用户、文档等（优先使用环境变量）
+DEFAULT_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./xbk.db")
 
 # 智能体数据库URL - 用于AI智能体相关数据
 AI_DATABASE_URL = os.getenv("AI_DATABASE_URL", "sqlite:///./znt.db")

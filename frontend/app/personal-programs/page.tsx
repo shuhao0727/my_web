@@ -79,6 +79,14 @@ export default function PersonalProgramsPage() {
         }),
       });
 
+      // 检查响应内容类型
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('非JSON响应:', text.substring(0, 200));
+        throw new Error(`服务器返回了非JSON响应 (${response.status}): ${text.substring(0, 100)}`);
+      }
+
       const data = await response.json();
 
       if (response.ok && data.success) {
@@ -99,9 +107,10 @@ export default function PersonalProgramsPage() {
         setLoginModalVisible(false);
         loginForm.resetFields();
       } else {
-        throw new Error(data.detail || data.message || '登录失败');
+        throw new Error(data.detail || data.message || `登录失败: ${response.status}`);
       }
     } catch (error: any) {
+      console.error('登录错误:', error);
       message.error(error.message || '登录失败，请检查姓名和学号');
     } finally {
       setLoginLoading(false);

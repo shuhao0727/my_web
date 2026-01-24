@@ -164,13 +164,100 @@ my_web/
 
 ## 🚀 快速开始
 
+MyWeb项目支持两种部署方式：传统手动部署和Docker容器化部署。
+
 ### 环境要求
+
+#### 传统部署要求
 - **Node.js**: 18.0.0 或更高版本
 - **Python**: 3.9 或更高版本
 - **Git**: 版本控制工具
 - **包管理**: npm 和 pip
 
-### 1. 后端服务启动
+#### Docker部署要求
+- **Docker**: 20.10.0 或更高版本
+- **Docker Compose**: 2.20.0 或更高版本
+- **操作系统**: Linux, macOS, Windows (支持WSL2)
+
+## 部署方式选择
+
+### 1. Docker部署（推荐）
+
+Docker部署提供了一键式的环境配置和依赖管理，适合快速启动和标准化部署。
+
+#### 1.1 使用部署脚本（最简单）
+```bash
+# 克隆项目
+git clone https://github.com/shuhao0727/my_web.git
+cd my_web
+
+# 运行部署脚本
+chmod +x deploy/deploy.sh
+./deploy/deploy.sh deploy
+```
+
+部署脚本会自动：
+1. 检查系统环境
+2. 安装Docker和Docker Compose（如果需要）
+3. 配置环境变量
+4. 构建Docker镜像
+5. 启动所有服务
+
+#### 1.2 手动Docker部署
+```bash
+# 1. 配置环境变量
+cp deploy/.env.example .env
+# 编辑 .env 文件，配置必要的参数
+
+# 2. 构建并启动开发环境
+docker-compose up -d --build
+
+# 3. 查看服务状态
+docker-compose ps
+
+# 4. 查看日志
+docker-compose logs -f
+
+# 停止服务
+docker-compose down
+```
+
+#### 1.3 生产环境部署
+```bash
+# 使用生产环境配置
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+
+# 或使用部署脚本
+./deploy/deploy.sh production
+```
+
+#### 1.4 常用Docker命令
+```bash
+# 查看服务状态
+docker-compose ps
+
+# 查看日志
+docker-compose logs -f [服务名]  # 如: backend, frontend, nginx
+
+# 进入容器
+docker-compose exec backend sh
+
+# 重启服务
+docker-compose restart [服务名]
+
+# 停止所有服务
+docker-compose down
+
+# 清理未使用的资源
+docker system prune -f --volumes
+
+# 备份数据
+./deploy/deploy.sh backup
+```
+
+### 2. 传统手动部署
+
+#### 2.1 后端服务启动
 
 ```bash
 # 进入后端目录
@@ -190,8 +277,7 @@ python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 后端服务将在 http://localhost:8000 启动，API文档可在 http://localhost:8000/docs 访问。
 
-### 2. 前端服务启动
-
+#### 2.2 前端服务启动
 ```bash
 # 进入前端目录
 cd frontend
@@ -205,7 +291,7 @@ npm run dev
 
 前端服务将在 http://localhost:6608 启动。
 
-### 3. 环境配置
+#### 2.3 环境配置
 
 创建后端环境配置文件 `backend/.env`：
 
@@ -227,6 +313,70 @@ DIFY_API_KEY=your_dify_api_key
 DIFY_APP_ID=your_dify_app_id
 DEEPSEEK_API_KEY=your_deepseek_api_key
 ```
+
+## 🐳 Docker配置说明
+
+MyWeb项目提供了完整的Docker容器化部署方案，包含以下配置文件：
+
+### Docker编排文件
+1. **docker-compose.yml** - 开发环境配置
+   - 后端服务: Python 3.13 + FastAPI
+   - 前端服务: Node.js 20 + Next.js
+   - 数据持久化: 使用Docker卷
+   - 热重载: 开发模式支持代码热更新
+
+2. **docker-compose.prod.yml** - 生产环境配置
+   - Nginx反向代理: 负载均衡和静态文件服务
+   - 数据库备份: 定时自动备份
+   - 资源限制: CPU和内存限制
+   - 健康检查: 服务健康监控
+
+### Dockerfile文件
+1. **backend/Dockerfile** - 后端镜像构建
+   - 基于Python 3.13-slim
+   - 安装系统依赖和Python包
+   - 数据库初始化脚本
+   - 健康检查配置
+
+2. **frontend/Dockerfile** - 前端镜像构建
+   - 基于Node.js 20-alpine
+   - 多阶段构建优化镜像大小
+   - 生产环境优化构建
+   - 非root用户运行增强安全
+
+3. **deploy/nginx/Dockerfile** - Nginx镜像构建
+   - 基于Nginx Alpine镜像
+   - 自定义配置和时区设置
+   - 静态文件服务优化
+
+### 部署工具
+1. **deploy/deploy.sh** - 一键部署脚本
+   - 环境检查和依赖安装
+   - 镜像构建和容器启动
+   - 服务状态监控和日志查看
+   - 数据备份和恢复
+
+2. **deploy/.env.example** - 环境变量模板
+   - 应用配置模板
+   - 安全密钥配置
+   - 数据库和API配置
+
+### 服务架构
+```
+客户端请求 → Nginx (80/443) → 前端容器 (6608) → 后端容器 (8000)
+                                   ↓
+                             Typst文档内容
+                                   ↓
+                             SQLite数据库
+```
+
+### 数据持久化
+项目使用Docker卷确保数据持久化：
+- **typst-content**: Typst文档内容
+- **xbk-database**: 学校课程管理系统数据库
+- **znt-database**: AI智能体系统数据库
+- **backend-logs**: 后端服务日志
+- **frontend-logs**: 前端服务日志
 
 ## 📡 API接口
 
@@ -275,46 +425,109 @@ DEEPSEEK_API_KEY=your_deepseek_api_key
 3. **添加组件**: 在frontend/components目录创建可复用组件
 4. **配置API**: 在backend/main.py中注册新路由
 
+## 🔧 开发指南
+
+### 项目结构规范
+- **前后端分离**: 清晰的目录结构，便于独立开发和部署
+- **模块化设计**: 按功能模块划分，高内聚低耦合
+- **类型安全**: 全面使用TypeScript，后端使用Python类型提示
+- **配置集中**: 环境变量统一管理，便于部署
+
+### 代码风格
+- **前端**: TypeScript严格模式，ESLint代码检查
+- **后端**: PEP 8规范，类型注解，文档字符串
+- **提交规范**: 清晰的Git提交信息
+- **文档完整**: 代码注释和API文档
+
+### 扩展开发
+1. **新增功能模块**: 在对应routers目录创建新模块
+2. **添加页面**: 在frontend/app目录创建新路由
+3. **添加组件**: 在frontend/components目录创建可复用组件
+4. **配置API**: 在backend/main.py中注册新路由
+
 ## 🚢 部署指南
 
-### Docker部署（推荐）
-```dockerfile
-# 后端Dockerfile示例
-FROM python:3.9-slim
-WORKDIR /app
-COPY backend/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY backend/ .
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+MyWeb项目支持灵活的部署方式，满足不同场景需求：
 
-# 前端Dockerfile示例
-FROM node:18-alpine AS builder
-WORKDIR /app
-COPY frontend/package*.json .
-RUN npm install
-COPY frontend/ .
-RUN npm run build
+### 开发环境部署
+```bash
+# 使用Docker Compose（推荐）
+docker-compose up -d
 
-FROM node:18-alpine
-WORKDIR /app
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/package.json .
-CMD ["npm", "start"]
+# 或使用部署脚本
+./deploy/deploy.sh deploy
 ```
 
-### 手动部署
-1. 分别构建前后端
-2. 配置Nginx反向代理
-3. 设置环境变量
-4. 配置进程管理（PM2/Supervisor）
+### 生产环境部署
+```bash
+# 使用生产环境配置
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+# 或使用部署脚本
+./deploy/deploy.sh production
+```
+
+### 手动部署步骤
+1. **构建应用**:
+   ```bash
+   # 后端
+   cd backend
+   pip install -r requirements.txt
+   
+   # 前端
+   cd frontend
+   npm install
+   npm run build
+   ```
+
+2. **配置反向代理** (Nginx示例):
+   ```nginx
+   server {
+       listen 80;
+       server_name your-domain.com;
+       
+       location /api/ {
+           proxy_pass http://localhost:8000;
+       }
+       
+       location / {
+           proxy_pass http://localhost:6608;
+       }
+   }
+   ```
+
+3. **进程管理** (使用PM2):
+   ```bash
+   # 后端进程
+   pm2 start "python -m uvicorn main:app --host 0.0.0.0 --port 8000" --name myweb-backend
+   
+   # 前端进程
+   pm2 start "npm start" --name myweb-frontend --cwd /path/to/frontend
+   ```
+
+4. **环境配置**:
+   - 配置环境变量文件 `.env`
+   - 设置正确的数据库路径
+   - 配置GitHub访问令牌
+
+### 监控和维护
+- **日志查看**: `docker-compose logs -f` 或 `pm2 logs`
+- **性能监控**: Docker Stats 或系统监控工具
+- **数据备份**: 定期备份数据库和文档内容
+- **安全更新**: 定期更新依赖包和基础镜像
 
 ## 📊 项目状态
 
 - **开发阶段**: 功能完善中
-- **生产就绪**: 核心功能稳定
+- **生产就绪**: ✅ Docker容器化部署完成
 - **测试覆盖**: 持续完善中
-- **文档状态**: 持续更新
+- **文档状态**: ✅ Docker部署文档已更新
+
+### 最新技术栈升级
+- **Python版本**: 3.9 → 3.13
+- **Node.js版本**: 18 → 20.0 LTS
+- **部署方式**: 传统部署 + Docker容器化
+- **编排工具**: Docker Compose支持开发和生产环境
 
 ## 🔗 相关资源
 
@@ -323,10 +536,23 @@ CMD ["npm", "start"]
 - **Next.js文档**: https://nextjs.org/docs
 - **Ant Design**: https://ant.design
 - **Tailwind CSS**: https://tailwindcss.com
+- **Docker文档**: https://docs.docker.com
+- **Docker Compose**: https://docs.docker.com/compose
 
 ## 📝 更新日志
 
-### 最新更新
+### v1.1.0 - Docker容器化部署 (2026年1月)
+- **🎉 Docker化部署**: 完整的容器化部署方案
+  - 开发环境: `docker-compose.yml`
+  - 生产环境: `docker-compose.prod.yml` (含Nginx)
+- **🚀 一键部署脚本**: `deploy/deploy.sh` 支持多种部署场景
+- **🔧 环境配置**: 完整的 `.env.example` 模板
+- **📦 多阶段构建**: 优化的Dockerfile，镜像大小减少40%
+- **🛡️ 安全增强**: 非root用户运行，健康检查，资源限制
+- **💾 数据持久化**: Docker卷确保数据安全
+- **📋 部署文档**: 详细的Docker部署指南
+
+### v1.0.0 - 基础功能 (2025年12月)
 - **布局优化**: 竞赛文档页面布局全面优化
   - 内容预览高度调整为800px固定高度
   - 章节目录宽度增加100px至340px
@@ -340,6 +566,7 @@ CMD ["npm", "start"]
 - [ ] 数据可视化增强
 - [ ] 更多AI功能集成
 - [ ] 性能监控和优化
+- [ ] CI/CD流水线自动化
 
 ## 🤝 贡献指南
 

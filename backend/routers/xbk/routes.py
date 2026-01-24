@@ -49,7 +49,7 @@ async def get_system_config():
         available_classes = [row[0] for row in cursor.fetchall()]
         
         # 获取当前配置（从system_config表）
-        cursor.execute("SELECT key, value FROM system_config WHERE key IN ('current_year', 'current_grade')")
+        cursor.execute("SELECT config_key, config_value FROM system_config WHERE config_key IN ('current_year', 'current_grade')")
         config_rows = cursor.fetchall()
         config = {row[0]: row[1] for row in config_rows}
         
@@ -82,7 +82,7 @@ async def update_system_config(config: Dict[str, Any]):
         
         for key, value in config.items():
             cursor.execute(
-                "INSERT OR REPLACE INTO system_config (key, value, updated_time) VALUES (?, ?, datetime('now'))",
+                "INSERT OR REPLACE INTO system_config (config_key, config_value, updated_at) VALUES (?, ?, datetime('now'))",
                 (key, str(value))
             )
         

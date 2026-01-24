@@ -10,8 +10,8 @@ const nextConfig: NextConfig = {
   reactStrictMode: false,
   // 配置API代理 - 使用环境变量
   async rewrites() {
-    // 从环境变量获取API地址，开发环境默认为localhost:8000
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    // 优先使用内部API地址（用于容器间通信），如果未定义则使用外部地址
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL_INTERNAL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     
     return [
       {
