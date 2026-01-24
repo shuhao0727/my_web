@@ -8,13 +8,23 @@ import os
 backend_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, backend_dir)
 
+# 在导入其他模块之前加载环境变量
+from dotenv import load_dotenv
+import logging
+
+env_path = os.path.join(os.path.dirname(__file__), '.env')
+if os.path.exists(env_path):
+    load_dotenv(env_path)
+    print(f"✅ 环境变量已加载: {env_path}")
+    print(f"   CONTENT_DIR={os.getenv('CONTENT_DIR')}")
+    print(f"   GITHUB_ACCESS_TOKEN exists: {bool(os.getenv('GITHUB_ACCESS_TOKEN'))}")
+else:
+    print(f"⚠️  环境变量文件不存在: {env_path}")
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
-import os
-import logging
-from dotenv import load_dotenv
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -22,15 +32,9 @@ async def lifespan(app: FastAPI):
     # 启动阶段
     print("🚀 启动后端服务...")
     
-    # 加载环境变量
-    env_path = os.path.join(os.path.dirname(__file__), '.env')
-    if os.path.exists(env_path):
-        load_dotenv(env_path)
-        print(f"✅ 环境变量已加载: {env_path}")
-        print(f"   SYNC_INTERVAL_SECONDS={os.getenv('SYNC_INTERVAL_SECONDS')}")
-        print(f"   ENABLE_AUTO_SYNC={os.getenv('ENABLE_AUTO_SYNC')}")
-    else:
-        print(f"⚠️  环境变量文件不存在: {env_path}")
+    # 环境变量已经在模块级别加载，这里只打印其他配置
+    print(f"   SYNC_INTERVAL_SECONDS={os.getenv('SYNC_INTERVAL_SECONDS')}")
+    print(f"   ENABLE_AUTO_SYNC={os.getenv('ENABLE_AUTO_SYNC')}")
     
     # 配置日志
     logging.basicConfig(
@@ -93,7 +97,7 @@ app.add_middleware(
 
 # 注册静态文件服务
 # 1. 静态PDF缓存目录
-content_dir = os.getenv("CONTENT_DIR", "/app/content")
+content_dir = os.getenv("CONTENT_DIR", "./content")
 if os.path.exists(content_dir):
     app.mount("/content", StaticFiles(directory=content_dir), name="content")
     print(f"✅ 静态文件服务已挂载: /content -> {content_dir}")
@@ -144,6 +148,14 @@ try:
     print("✅ XBK安全认证路由已加载")
 except ImportError as e:
     print(f"⚠️  XBK安全认证路由导入失败: {e}")
+
+# 新增Typst内容路由
+try:
+    from routers.typst_content import router as typst_router
+    app.include_router(typst_router)
+    print("✅ Typst内容路由已加载")
+except ImportError as e:
+    print(f"⚠️  Typst内容路由导入失败: {e}")
 
 # 健康检查
 @app.get("/")

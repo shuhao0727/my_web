@@ -11,8 +11,6 @@ import requests
 import hashlib
 import glob
 
-from .pdf_cache_service import PdfCacheService
-
 logger = logging.getLogger(__name__)
 
 class GitHubRepoSyncService:
@@ -24,8 +22,8 @@ class GitHubRepoSyncService:
         self.branch = os.getenv("GITHUB_REPO_BRANCH", "main")
         self.repo_url = f"https://github.com/{self.repo_owner}/{self.repo_name}.git"
         
-        # 本地存储路径 - 从环境变量获取，默认为/content
-        content_dir = os.getenv("CONTENT_DIR", "/app/content")
+        # 本地存储路径 - 从环境变量获取，默认为./content
+        content_dir = os.getenv("CONTENT_DIR", "./content")
         self.base_dir = Path(content_dir)
         self.repo_dir = self.base_dir / self.repo_name
         
@@ -41,9 +39,6 @@ class GitHubRepoSyncService:
         
         # 令牌过期状态（默认为False，通过同步操作更新）
         self.token_expired = False
-        
-        # PDF缓存服务
-        self.pdf_cache_service = PdfCacheService(self.repo_dir)
     
     def ensure_base_directory(self):
         """确保基础目录存在"""
@@ -276,14 +271,6 @@ class GitHubRepoSyncService:
                 logger.info("仓库已存在，执行拉取更新")
                 result = self.pull_updates()
             
-            # 如果同步成功，自动生成PDF缓存
-            if result.get("success"):
-                logger.info("同步成功，开始生成PDF缓存")
-                pdf_result = self.generate_all_pdf_cache()
-                result["pdf_cache_generated"] = pdf_result.get("success", False)
-                result["pdf_cache_message"] = pdf_result.get("message", "")
-                result["pdf_cache_results"] = pdf_result.get("results", {})
-            
             return result
                 
         except Exception as e:
@@ -461,31 +448,6 @@ class GitHubRepoSyncService:
                 "structure": {},
             }
 
-    def get_all_typst_files(self):
-        """获取所有Typst文件"""
-        return self.pdf_cache_service.get_typst_files()
-
-    def compile_to_pdf(self, relative_path):
-        """将Typst文件编译为PDF"""
-        return self.pdf_cache_service.compile_to_pdf(relative_path)
-
-    def generate_all_pdf_cache(self):
-        """为所有Typst文件生成PDF缓存"""
-        return self.pdf_cache_service.generate_all_pdf_cache()
-
-    def get_pdf_cache_info(self):
-        """获取PDF缓存信息"""
-        return self.pdf_cache_service.get_pdf_cache_info()
-
-    def get_static_pdf_url(self, relative_path):
-        """获取静态PDF文件的URL路径"""
-        return self.pdf_cache_service.get_static_pdf_url(relative_path)
-
-    def get_static_pdf_path(self, relative_path):
-        """获取静态PDF文件的本地路径"""
-        return self.pdf_cache_service.get_static_pdf_path(relative_path)
-
-
 # 创建全局服务实例
 repo_sync_service = GitHubRepoSyncService()
 
@@ -502,4 +464,3 @@ if __name__ == "__main__":
     if result.get("success"):
         print("仓库结构:", service.get_repo_structure())
         print("文件列表:", service.list_files(""))
-        print("PDF缓存信息:", service.get_pdf_cache_info())
