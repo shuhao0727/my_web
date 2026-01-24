@@ -93,12 +93,18 @@ app.add_middleware(
 
 # 注册静态文件服务
 # 1. 静态PDF缓存目录
-content_dir = "/Volumes/文件/4-实用代码/my_web/content"
+content_dir = os.getenv("CONTENT_DIR", "/app/content")
 if os.path.exists(content_dir):
     app.mount("/content", StaticFiles(directory=content_dir), name="content")
     print(f"✅ 静态文件服务已挂载: /content -> {content_dir}")
 else:
     print(f"⚠️  内容目录不存在: {content_dir}")
+    # 尝试创建目录
+    try:
+        os.makedirs(content_dir, exist_ok=True)
+        print(f"✅ 已创建内容目录: {content_dir}")
+    except Exception as e:
+        print(f"❌ 创建内容目录失败: {e}")
 
 # 新增仓库同步路由
 try:

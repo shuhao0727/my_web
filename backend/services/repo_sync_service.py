@@ -19,13 +19,14 @@ class GitHubRepoSyncService:
     """GitHub仓库同步服务"""
     
     def __init__(self):
-        self.repo_owner = "shuhao0727"
-        self.repo_name = "2-My-notes"
-        self.branch = "main"
+        self.repo_owner = os.getenv("GITHUB_REPO_OWNER", "shuhao0727")
+        self.repo_name = os.getenv("GITHUB_REPO_NAME", "2-My-notes")
+        self.branch = os.getenv("GITHUB_REPO_BRANCH", "main")
         self.repo_url = f"https://github.com/{self.repo_owner}/{self.repo_name}.git"
         
-        # 本地存储路径
-        self.base_dir = Path("/Volumes/文件/4-实用代码/my_web/content")
+        # 本地存储路径 - 从环境变量获取，默认为/content
+        content_dir = os.getenv("CONTENT_DIR", "/app/content")
+        self.base_dir = Path(content_dir)
         self.repo_dir = self.base_dir / self.repo_name
         
         # GitHub token

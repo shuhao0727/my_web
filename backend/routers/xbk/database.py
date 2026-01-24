@@ -8,7 +8,13 @@ from typing import Dict, Any, Tuple
 
 def get_db():
     """获取XBK数据库连接"""
-    db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "xbk.db")
+    # 从环境变量获取数据库路径，默认为/app/data/xbk.db
+    db_path = os.getenv("XBK_DATABASE_URL", "sqlite:///app/data/xbk.db")
+    # 处理sqlite:///前缀
+    if db_path.startswith("sqlite:///"):
+        db_path = db_path.replace("sqlite:///", "")
+    elif db_path.startswith("sqlite://"):
+        db_path = db_path.replace("sqlite://", "")
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row  # 返回字典格式的结果
     return conn

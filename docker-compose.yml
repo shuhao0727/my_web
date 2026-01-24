@@ -1,0 +1,106 @@
+version: '3.8'
+
+services:
+  # 后端服务
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: myweb-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # 数据库配置
+      - DATABASE_URL=sqlite:///app/data/my_web.db
+      - AI_DATABASE_URL=sqlite:///app/data/znt.db
+      - XBK_DATABASE_URL=sqlite:///app/data/xbk.db
+      # 敏感变量从外部传入（通过.env文件或直接设置）
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-default_jwt_secret}
+      - XBK_JWT_SECRET_KEY=${XBK_JWT_SECRET_KEY:-default_xbk_jwt_secret}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - DIFY_API_KEY=${DIFY_API_KEY}
+      - DIFY_BASE_URL=${DIFY_BASE_URL:-https://api.dify.ai/v1}
+      # GitHub仓库同步
+      - GITHUB_ACCESS_TOKEN=${GITHUB_ACCESS_TOKEN}
+      - GITHUB_REPO_OWNER=shuhao0727
+      - GITHUB_REPO_NAME=2-My-notes
+      - GITHUB_REPO_BRANCH=main
+      - SYNC_INTERVAL_SECONDS=86400
+      - ENABLE_AUTO_SYNC=true
+      # 静态文件路径
+      - CONTENT_DIR=/app/content
+      # 日志级别
+      - LOG_LEVEL=INFO
+    volumes:
+      # 数据持久化
+      - ./data/databases:/app/data
+      - ./data/content:/app/content
+      - ./data/logs/backend:/app/logs
+    networks:
+      - myweb-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # 前端服务
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: myweb-frontend
+    restart: unless-stopped
+    ports:
+      - "6608:6608"
+    environment:
+      # API地址，指向后端服务名
+      - NEXT_PUBLIC_API_URL=http://backend:8000
+      - PORT=6608
+      - HOSTNAME=0.0.0.0
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+    volumes:
+      # 日志持久化
+      - ./data/logs/frontend:/app/logs
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - myweb-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6608"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Nginx反向代理（可选，如果需要对外提供统一入口）
+  nginx:
+    image: nginx:alpine
+    container_name: myweb-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+      - ./data/logs/nginx:/var/log/nginx
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - myweb-network
+
+# 网络配置
+networks:
+  myweb-network:
+    driver: bridge
+
+# 数据卷配置
+volumes:
+  app-data:
+    driver: local
