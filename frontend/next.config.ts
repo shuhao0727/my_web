@@ -10,8 +10,8 @@ const nextConfig: NextConfig = {
   reactStrictMode: false,
   // 配置API代理 - 使用环境变量
   async rewrites() {
-    // 从环境变量获取API地址，默认为容器内部的backend服务
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://backend:8000';
+    // 从环境变量获取API地址，开发环境默认为localhost:8000
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     
     return [
       {
@@ -21,6 +21,14 @@ const nextConfig: NextConfig = {
       {
         source: '/api/ai/:path*',
         destination: `${apiUrl}/api/ai/:path*`,
+      },
+      {
+        source: '/api/repo/:path*',
+        destination: `${apiUrl}/api/repo/:path*`,
+      },
+      {
+        source: '/api/health',
+        destination: `${apiUrl}/health`,
       },
     ];
   },
