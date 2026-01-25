@@ -30,6 +30,14 @@ const sortByNumber = (a: string, b: string): number => {
   return numA - numB;
 };
 
+// 安全字符串比较函数，处理null/undefined值
+const safeStringCompare = (a: string | null | undefined, b: string | null | undefined): number => {
+  if (a == null && b == null) return 0;
+  if (a == null) return 1;  // null值排在后面
+  if (b == null) return -1; // null值排在后面
+  return a.localeCompare(b);
+};
+
 const DataTable: React.FC<DataTableProps> = ({ data, loading, filters, onRefresh }) => {
   // 编辑模态框状态
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -68,7 +76,7 @@ const DataTable: React.FC<DataTableProps> = ({ data, loading, filters, onRefresh
   // 对学生信息按班级、学号升序排序
   const sortedStudentInfo = useMemo(() => {
     return [...data.studentInfo].sort((a, b) => {
-      const classCompare = a.班级.localeCompare(b.班级);
+      const classCompare = safeStringCompare(a.班级, b.班级);
       if (classCompare !== 0) return classCompare;
       return sortByNumber(a.学号, b.学号);
     });
@@ -77,7 +85,7 @@ const DataTable: React.FC<DataTableProps> = ({ data, loading, filters, onRefresh
   // 对选课结果按班级、学号、课程代码升序排序
   const sortedCourseSelection = useMemo(() => {
     return [...data.courseSelection].sort((a, b) => {
-      const classCompare = a.班级.localeCompare(b.班级);
+      const classCompare = safeStringCompare(a.班级, b.班级);
       if (classCompare !== 0) return classCompare;
       const studentIdCompare = sortByNumber(a.学号, b.学号);
       if (studentIdCompare !== 0) return studentIdCompare;
@@ -88,7 +96,7 @@ const DataTable: React.FC<DataTableProps> = ({ data, loading, filters, onRefresh
   // 对合并数据按班级、学号、课程代码升序排序
   const sortedMergedData = useMemo(() => {
     return [...data.mergedData].sort((a, b) => {
-      const classCompare = a.班级.localeCompare(b.班级);
+      const classCompare = safeStringCompare(a.班级, b.班级);
       if (classCompare !== 0) return classCompare;
       const studentIdCompare = sortByNumber(a.学号, b.学号);
       if (studentIdCompare !== 0) return studentIdCompare;

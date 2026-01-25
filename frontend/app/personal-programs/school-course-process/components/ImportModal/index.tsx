@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Modal, Form, Select, Upload, Button, message, Row, Col, Progress } from 'antd';
+import { Modal, Form, Select, Upload, Button, message, Row, Col, Progress, InputNumber } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import { Filters, ImportSettings } from '../../types/data.types';
 
@@ -113,13 +113,17 @@ const ImportModal: React.FC<ImportModalProps> = ({ visible, onCancel, onOk, filt
             <Form.Item
               label="年份"
               name="year"
-              rules={[{ required: true, message: '请选择年份' }]}
+              rules={[
+                { required: true, message: '请输入年份' },
+                { type: 'number', min: 2000, max: 2100, message: '年份应在2000-2100之间' }
+              ]}
             >
-              <Select placeholder="请选择年份">
-                <Option value={2024}>2024</Option>
-                <Option value={2025}>2025</Option>
-                <Option value={2026}>2026</Option>
-              </Select>
+              <InputNumber 
+                placeholder="请输入年份" 
+                style={{ width: '100%' }}
+                min={2000}
+                max={2100}
+              />
             </Form.Item>
           </Col>
           <Col span={12}>

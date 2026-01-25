@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Card, Row, Col, Select, Form, Button, Space, Spin, Input } from 'antd';
+import { Card, Row, Col, Select, Form, Button, Space, Spin, Input, InputNumber } from 'antd';
 import { SearchOutlined, ReloadOutlined } from '@ant-design/icons';
 
 const { Option } = Select;
@@ -54,17 +54,12 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
           <Row gutter={[16, 16]} style={{ width: '100%' }}>
             <Col xs={24} sm={12} md={4}>
               <Form.Item label="年份" name="year">
-                <Select
-                  placeholder="请选择年份"
-                  allowClear
+                <InputNumber 
+                  placeholder="输入年份" 
                   style={{ width: '100%' }}
-                >
-                  {availableYears.map((year) => (
-                    <Option key={year} value={year}>
-                      {year}
-                    </Option>
-                  ))}
-                </Select>
+                  min={2000}
+                  max={2100}
+                />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12} md={4}>

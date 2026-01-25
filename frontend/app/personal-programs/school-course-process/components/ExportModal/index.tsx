@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Modal, Form, Select, Radio, Button, message, Row, Col, Input } from 'antd';
+import { Modal, Form, Select, Radio, Button, message, Row, Col, Input, InputNumber } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
 import { Filters, ExportSettings } from '../../types/data.types';
 
@@ -104,14 +104,17 @@ const ExportModal: React.FC<ExportModalProps> = ({
             <Form.Item
               label="年份"
               name="year"
-              rules={[{ required: true, message: '请选择年份（用于数据库筛选）' }]}
+              rules={[
+                { required: true, message: '请输入年份（用于数据库筛选）' },
+                { type: 'number', min: 2000, max: 2100, message: '年份应在2000-2100之间' }
+              ]}
             >
-              <Select placeholder="选择年份（筛选用）">
-                {/* 基于数据库实际数据生成年份选项 */}
-                {availableYears.map(year => (
-                  <Option key={year} value={year}>{year}</Option>
-                ))}
-              </Select>
+              <InputNumber 
+                placeholder="输入年份（筛选用）" 
+                style={{ width: '100%' }}
+                min={2000}
+                max={2100}
+              />
             </Form.Item>
           </Col>
           <Col span={12}>
@@ -135,18 +138,34 @@ const ExportModal: React.FC<ExportModalProps> = ({
             <Form.Item
               label="起始年份"
               name="yearStart"
-              rules={[{ required: true, message: '请输入起始年份（用于标题）' }]}
+              rules={[
+                { required: true, message: '请输入起始年份（用于标题）' },
+                { type: 'number', min: 2000, max: 2100, message: '年份应在2000-2100之间' }
+              ]}
             >
-              <Input type="number" placeholder="例如：2024" />
+              <InputNumber 
+                placeholder="例如：2024" 
+                style={{ width: '100%' }}
+                min={2000}
+                max={2100}
+              />
             </Form.Item>
           </Col>
           <Col span={12}>
             <Form.Item
               label="结束年份"
               name="yearEnd"
-              rules={[{ required: true, message: '请输入结束年份（用于标题）' }]}
+              rules={[
+                { required: true, message: '请输入结束年份（用于标题）' },
+                { type: 'number', min: 2000, max: 2100, message: '年份应在2000-2100之间' }
+              ]}
             >
-              <Input type="number" placeholder="例如：2025" />
+              <InputNumber 
+                placeholder="例如：2025" 
+                style={{ width: '100%' }}
+                min={2000}
+                max={2100}
+              />
             </Form.Item>
           </Col>
         </Row>

@@ -13,6 +13,7 @@ aiohttp==3.9.3
 
 # 任务调度
 apscheduler==3.10.4
+schedule==1.2.1
 
 # 数据处理
 pydantic==2.5.0
