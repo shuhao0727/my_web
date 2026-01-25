@@ -22,29 +22,8 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# 安装 Typst - 使用更稳定的安装方式
-RUN ARCH=$(uname -m) && \
-    # 设置默认变量
-    TYPST_URL="" && \
-    if [ "$ARCH" = "x86_64" ]; then \
-        TYPST_URL="https://github.com/typst/typst/releases/latest/download/typst-x86_64-unknown-linux-gnu.tar.xz"; \
-    elif [ "$ARCH" = "aarch64" ]; then \
-        TYPST_URL="https://github.com/typst/typst/releases/latest/download/typst-aarch64-unknown-linux-gnu.tar.xz"; \
-    else \
-        echo "Unsupported architecture: $ARCH. Installing via cargo instead." && \
-        apt-get update && apt-get install -y cargo && \
-        cargo install typst --locked && \
-        exit 0; \
-    fi && \
-    echo "Downloading Typst from: $TYPST_URL" && \
-    wget -q "$TYPST_URL" -O typst.tar.xz && \
-    mkdir -p typst-extract && \
-    tar -xf typst.tar.xz -C typst-extract --strip-components=1 && \
-    mv typst-extract/typst /usr/local/bin/ && \
-    chmod +x /usr/local/bin/typst && \
-    rm -rf typst.tar.xz typst-extract && \
-    echo "Typst installed successfully" && \
-    typst --version
+# Typst安装暂时跳过，因为网络问题可能导致构建失败
+RUN echo "跳过Typst安装，Typst功能将不可用。如需使用，请在构建后手动安装。"
 
 # 复制依赖文件
 COPY requirements.txt .
