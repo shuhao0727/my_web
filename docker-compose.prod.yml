@@ -1,3 +1,6 @@
+# 生产环境配置
+version: '3.8'
+
 # 网络配置
 networks:
   myweb-network:
@@ -8,28 +11,22 @@ networks:
 
 # 数据卷配置
 volumes:
-  # Typst文档内容卷（从GitHub同步的文档）
   typst-content:
     driver: local
-  # 后端数据卷（包含数据库文件）
   backend-data:
     driver: local
-  # 前端数据卷
   frontend-data:
     driver: local
-  # Redis数据卷
   redis-data:
     driver: local
-  # PostgreSQL数据卷
   postgres-data:
     driver: local
-  # 文章内容卷（存储Markdown文章）
   articles-content:
     driver: local
 
 # 服务定义
 services:
-  # ==================== Redis缓存服务 ====================
+  # Redis缓存服务
   redis:
     image: redis:7-alpine
     container_name: myweb-redis
@@ -57,7 +54,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
-    # 资源限制
     deploy:
       resources:
         limits:
@@ -67,7 +63,7 @@ services:
           memory: 256M
           cpus: '0.25'
 
-  # ==================== PostgreSQL数据库服务 ====================
+  # PostgreSQL数据库服务
   postgres:
     image: postgres:16-alpine
     container_name: myweb-postgres
@@ -106,52 +102,45 @@ services:
           memory: 512M
           cpus: '0.5'
 
-  # ==================== 后端服务 (FastAPI + Python 3.13) ====================
+  # 后端服务 (FastAPI + Python 3.11) - 生产环境
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      cache_from:
-        - myweb-backend:latest
       args:
-        # 构建参数
-        PYTHON_VERSION: 3.11
-        POETRY_VERSION: 1.7.0
-        # 构建缓存配置
-        BUILDKIT_INLINE_CACHE: 1
-    container_name: myweb-backend
+        REQUIREMENTS_FILE: requirements-prod.txt
+        HTTP_PROXY: http://192.168.5.79:7897
+        HTTPS_PROXY: http://192.168.5.79:7897
+    container_name: myweb-backend-prod
     restart: unless-stopped
     ports:
-      - "8000:8000"  # FastAPI开发端口
-      - "5678:5678"  # 调试端口（可选）
+      - "8000:8000"
     networks:
       - myweb-network
     volumes:
-      # 数据持久化卷 - 改为目录挂载
       - typst-content:/app/content
       - backend-data:/app/data
       - articles-content:/app/content/wz
-      # 开发模式：绑定挂载源代码（便于热重载）
-      - ./backend:/app/code
+      # 生产环境不挂载源代码，使用构建好的镜像
     environment:
       # 应用配置
-      - ENVIRONMENT=development
-      - DEBUG=true
+      - ENVIRONMENT=production
+      - DEBUG=false
       - LOG_LEVEL=INFO
       
       # Redis缓存配置
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_DB=0
-      - REDIS_CACHE_TTL=300  # 缓存默认5分钟
+      - REDIS_CACHE_TTL=300
       
-      # 数据库配置 - 使用PostgreSQL
+      # 数据库配置
       - DATABASE_URL=postgresql://myweb_user:${POSTGRES_PASSWORD:-myweb_password}@postgres:5432/myweb
       - AI_DATABASE_URL=postgresql://myweb_user:${POSTGRES_PASSWORD:-myweb_password}@postgres:5432/ai_db
       - XBK_DATABASE_URL=postgresql://myweb_user:${POSTGRES_PASSWORD:-myweb_password}@postgres:5432/xbk
       - XBK_DB_PATH=/app/data/xbk.db
       - ZNT_DB_PATH=/app/data/znt.db
-      - CONTENT_DIR=/app/code/content
+      - CONTENT_DIR=/app/content
       
       # GitHub同步配置
       - GITHUB_ACCESS_TOKEN=${GITHUB_ACCESS_TOKEN:-}
@@ -185,14 +174,12 @@ services:
       - WEB_CONCURRENCY=4
       - MAX_WORKERS=8
     env_file:
-      - .env  # 从.env文件加载环境变量
+      - .env
     depends_on:
       redis:
         condition: service_healthy
       postgres:
         condition: service_healthy
-      health-checker:
-        condition: service_started
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -201,24 +188,19 @@ services:
       start_period: 40s
     command: >
       sh -c "
-        echo '🚀 启动MyWeb后端服务...' &&
+        echo '🚀 启动MyWeb后端服务（生产环境）...' &&
         echo '📁 检查数据目录...' &&
         mkdir -p /app/content /app/data &&
-        echo '🔗 创建数据库符号链接...' &&
-        ln -sf /app/data/znt.db /app/code/znt.db &&
-        ln -sf /app/data/xbk.db /app/code/xbk.db &&
-        echo '🗄️  初始化数据库...' &&
-        cd /app/code &&
+        echo '🗄️ 初始化数据库...' &&
         python init_databases.py &&
         echo '🔧 启动FastAPI服务...' &&
-        python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload --workers 4
+        python -m uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
       "
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
-    # 资源限制
     deploy:
       resources:
         limits:
@@ -228,30 +210,22 @@ services:
           memory: 768M
           cpus: '0.5'
 
-  # ==================== 前端服务 (Next.js + Node.js 20) ====================
+  # 前端服务 (Next.js + Node.js 20) - 生产环境
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      target: development  # 使用开发阶段
-      args:
-        NODE_VERSION: 20
-    container_name: myweb-frontend
+      target: production
+    container_name: myweb-frontend-prod
     restart: unless-stopped
     ports:
-      - "6608:6608"  # Next.js开发端口
-      - "9229:9229"  # Node.js调试端口（可选）
+      - "6608:6608"
     networks:
       - myweb-network
     volumes:
-      # 数据卷
       - frontend-data:/app/data
-      # 开发模式：绑定挂载源代码
-      - ./frontend:/app
-      - /app/node_modules  # 匿名卷，防止主机node_modules覆盖
-      - /app/.next  # 匿名卷，缓存构建结果
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - NEXT_PUBLIC_API_URL=http://localhost:8000
       - NEXT_PUBLIC_API_URL_INTERNAL=http://backend:8000
       - NEXT_TELEMETRY_DISABLED=1
@@ -260,13 +234,6 @@ services:
       - TZ=Asia/Shanghai
       - LANG=en_US.UTF-8
       - LC_ALL=en_US.UTF-8
-      - NEXT_DISABLE_HYDRATION_WARNING=1
-      - SUPPRESS_HYDRATION_WARNING=1
-      - DISABLE_GOOGLE_TRANSLATE=1
-      # 构建优化
-      - NEXT_OPTIMIZE_FONTS=true
-      - NEXT_OPTIMIZE_IMAGES=true
-      - NEXT_ANALYZE=false
     env_file:
       - .env
     depends_on:
@@ -278,23 +245,12 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
-    command: >
-      sh -c "
-        echo '🚀 启动MyWeb前端服务...' &&
-        echo '📦 检查Node.js依赖...' &&
-        if [ ! -d '/app/node_modules' ]; then
-          echo '安装依赖...' &&
-          npm install
-        fi &&
-        echo '🔧 启动Next.js开发服务器...' &&
-        npm run dev
-      "
+    command: node server.js
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
-    # 资源限制
     deploy:
       resources:
         limits:
@@ -304,31 +260,11 @@ services:
           memory: 512M
           cpus: '0.25'
 
-  # ==================== 健康检查服务（简化版） ====================
-  health-checker:
-    image: alpine:latest
-    container_name: myweb-health-checker
-    networks:
-      - myweb-network
-    command: >
-      sh -c "
-        echo '⏳ 等待服务启动...' &&
-        sleep 5 &&
-        echo '✅ 健康检查服务就绪'
-      "
-    restart: "no"
-
-# ==================== 扩展配置说明 ====================
-# 1. 生产环境使用：复制此文件为docker-compose.prod.yml并修改：
-#    - 移除开发绑定挂载（volumes中的源代码挂载）
-#    - 更改环境变量：ENVIRONMENT=production, DEBUG=false
-#    - 添加Nginx反向代理服务
-#    - 调整资源限制
-#    - 移除热重载（--reload参数）
-#
-# 2. 数据库备份：可通过cron任务定期备份数据卷
-#    docker run --rm -v xbk-database:/data -v $(pwd)/backups:/backup alpine tar czf /backup/xbk-$(date +%Y%m%d).tar.gz -C /data .
-#
-# 3. 监控建议：可添加Prometheus、Grafana等服务
-#
-# 4. 网络隔离：生产环境应考虑更严格的网络策略
+# 生产环境优化说明：
+# 1. 使用生产环境构建：前端使用production阶段，后端使用requirements-prod.txt
+# 2. 移除开发配置：DEBUG=false，ENVIRONMENT=production
+# 3. 移除热重载：后端不使用--reload参数
+# 4. 移除源代码挂载：使用构建好的镜像
+# 5. 优化资源限制：根据生产需求调整
+# 6. 启用健康检查：确保服务可用性
+# 7. 日志配置：限制日志大小，防止磁盘占满

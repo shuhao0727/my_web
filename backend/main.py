@@ -12,14 +12,24 @@ sys.path.insert(0, backend_dir)
 from dotenv import load_dotenv
 import logging
 
-env_path = os.path.join(os.path.dirname(__file__), '.env')
-if os.path.exists(env_path):
-    load_dotenv(env_path)
-    print(f"✅ 环境变量已加载: {env_path}")
-    print(f"   CONTENT_DIR={os.getenv('CONTENT_DIR')}")
-    print(f"   GITHUB_ACCESS_TOKEN exists: {bool(os.getenv('GITHUB_ACCESS_TOKEN'))}")
-else:
-    print(f"⚠️  环境变量文件不存在: {env_path}")
+# 尝试从多个位置加载.env文件
+env_paths = [
+    os.path.join(os.path.dirname(__file__), '.env'),  # backend/.env
+    os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'),  # 根目录/.env
+]
+
+env_loaded = False
+for env_path in env_paths:
+    if os.path.exists(env_path):
+        load_dotenv(env_path)
+        print(f"✅ 环境变量已加载: {env_path}")
+        print(f"   CONTENT_DIR={os.getenv('CONTENT_DIR')}")
+        print(f"   GITHUB_ACCESS_TOKEN exists: {bool(os.getenv('GITHUB_ACCESS_TOKEN'))}")
+        env_loaded = True
+        break
+
+if not env_loaded:
+    print(f"⚠️  环境变量文件未找到，尝试路径: {env_paths}")
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -45,6 +55,14 @@ async def lifespan(app: FastAPI):
             logging.FileHandler("backend.log")
         ]
     )
+    
+    # 数据库优化：启用WAL模式和连接池
+    try:
+        from config.database import optimize_database_performance
+        optimize_database_performance()
+        print("✅ 数据库WAL模式优化完成")
+    except Exception as e:
+        print(f"⚠️  数据库优化失败: {e}")
     
     # 启动自动同步调度器（临时禁用以避免启动阻塞）
     # try:
@@ -156,6 +174,14 @@ try:
     print("✅ Typst内容路由已加载")
 except ImportError as e:
     print(f"⚠️  Typst内容路由导入失败: {e}")
+
+# 新增文章板块路由
+try:
+    from routers.articles import articles_router
+    app.include_router(articles_router)
+    print("✅ 文章板块路由已加载")
+except ImportError as e:
+    print(f"⚠️  文章板块路由导入失败: {e}")
 
 # 健康检查
 @app.get("/")

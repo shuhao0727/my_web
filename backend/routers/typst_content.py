@@ -412,6 +412,18 @@ async def render_typst_file(filepath: str, output_format: str = Query("svg", reg
         output_format: 输出格式，svg或pdf，默认为svg
     """
     try:
+        # 首先检查Typst是否可用
+        try:
+            subprocess.run(["typst", "--version"], capture_output=True, text=True, timeout=5)
+        except (subprocess.SubprocessError, FileNotFoundError) as e:
+            logger.warning(f"Typst不可用: {e}")
+            # 返回一个指示Typst不可用的响应，但HTTP状态为200，以便前端可以显示源代码
+            return {
+                "success": False,
+                "error": "Typst不可用，无法渲染文档。请检查Typst安装。",
+                "fallback": True,
+            }
+        
         repo_dir = get_repo_dir()
         typst_file = repo_dir / filepath
         

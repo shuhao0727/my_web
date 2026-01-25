@@ -1,0 +1,96 @@
+# 测试环境配置 - 基于生产配置但移除代理
+version: '3.8'
+
+networks:
+  myweb-test-network:
+    driver: bridge
+
+volumes:
+  typst-content-test:
+    driver: local
+  backend-data-test:
+    driver: local
+
+services:
+  # Redis缓存服务
+  redis:
+    image: redis:7-alpine
+    container_name: myweb-redis-test
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - myweb-test-network
+    command: >
+      redis-server 
+      --appendonly yes 
+      --maxmemory 128mb
+      --maxmemory-policy allkeys-lru
+      --save ""
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # 后端服务 (FastAPI + Python 3.11) - 测试环境
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      args:
+        REQUIREMENTS_FILE: requirements.txt
+    container_name: myweb-backend-test
+    restart: unless-stopped
+    ports:
+      - "8001:8000"
+    networks:
+      - myweb-test-network
+    volumes:
+      - typst-content-test:/app/content
+      - backend-data-test:/app/data
+    environment:
+      - ENVIRONMENT=test
+      - DEBUG=true
+      - LOG_LEVEL=INFO
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - REDIS_CACHE_TTL=300
+      - DATABASE_URL=sqlite:///./data/test.db
+      - XBK_DB_PATH=/app/data/xbk-test.db
+      - ZNT_DB_PATH=/app/data/znt-test.db
+      - CONTENT_DIR=/app/content
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=admin123
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:8001
+      - SECRET_KEY=test-secret-key-change-in-production
+      - JWT_ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30
+      - WORKERS_PER_CORE=1
+      - WEB_CONCURRENCY=1
+      - MAX_WORKERS=2
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    command: >
+      sh -c "
+        echo '🚀 启动MyWeb后端服务（测试环境）...' &&
+        echo '📁 检查数据目录...' &&
+        mkdir -p /app/content /app/data &&
+        echo '🗄️ 初始化数据库...' &&
+        python init_databases.py &&
+        echo '🔧 启动FastAPI服务...' &&
+        python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+      "
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "1"

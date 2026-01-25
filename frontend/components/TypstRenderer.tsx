@@ -93,7 +93,11 @@ export default function TypstRenderer({
           }
           setError(null);
         } else {
-          throw new Error('渲染失败');
+          // 后端返回success: false，表示Typst不可用或渲染失败，但HTTP状态为200
+          // 这里触发回退，显示源代码
+          console.warn('Typst渲染失败，回退到源代码显示:', data.error);
+          setRenderFailed(true);
+          setError(data.error || '文档渲染失败，正在显示源代码');
         }
       } else {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
