@@ -14,6 +14,7 @@ class ImportRequest(BaseModel):
 class QueryRequest(BaseModel):
     year: Optional[int] = None
     grade: Optional[str] = None
+    semester: Optional[str] = None
     class_name: Optional[str] = None
     page: int = 1
     page_size: int = 20
@@ -43,6 +44,8 @@ class AnalysisRequest(BaseModel):
 class SystemConfigResponse(BaseModel):
     current_year: Optional[int] = None
     current_grade: Optional[str] = None
+    current_semester: Optional[str] = None
     available_years: List[int] = []
     available_grades: List[str] = []
+    available_semesters: List[str] = []
     available_classes: List[str] = []

@@ -44,24 +44,30 @@ async def get_system_config():
         cursor.execute("SELECT DISTINCT 年级 FROM course_catalog ORDER BY 年级")
         available_grades = [row[0] for row in cursor.fetchall()]
         
+        # 获取所有可选的学年 - 直接返回预设值
+        available_semesters = ['上半学年', '下半学年']
+        
         # 获取所有可选的班级
         cursor.execute("SELECT DISTINCT 班级 FROM student_info ORDER BY 班级")
         available_classes = [row[0] for row in cursor.fetchall()]
         
         # 获取当前配置（从system_config表）
-        cursor.execute("SELECT config_key, config_value FROM system_config WHERE config_key IN ('current_year', 'current_grade')")
+        cursor.execute("SELECT config_key, config_value FROM system_config WHERE config_key IN ('current_year', 'current_grade', 'current_semester')")
         config_rows = cursor.fetchall()
         config = {row[0]: row[1] for row in config_rows}
         
         current_year_str = config.get('current_year')
         current_year = int(current_year_str) if current_year_str and current_year_str.strip() else None
         current_grade = config.get('current_grade')
+        current_semester = config.get('current_semester')
         
         return SystemConfigResponse(
             current_year=current_year,
             current_grade=current_grade,
+            current_semester=current_semester,
             available_years=available_years,
             available_grades=available_grades,
+            available_semesters=available_semesters,
             available_classes=available_classes
         )
         

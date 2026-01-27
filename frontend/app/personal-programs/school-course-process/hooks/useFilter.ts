@@ -7,6 +7,7 @@ export const useFilter = () => {
   const [filters, setFilters] = useState<Filters>({});
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [availableGrades, setAvailableGrades] = useState<string[]>([]);
+  const [availableSemesters, setAvailableSemesters] = useState<string[]>([]);
   const [availableClasses, setAvailableClasses] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -20,6 +21,7 @@ export const useFilter = () => {
       const config: SystemConfig = await fetchSystemConfig();
       setAvailableYears(config.availableYears || []);
       setAvailableGrades(config.availableGrades || []);
+      setAvailableSemesters(config.availableSemesters || []);
       setAvailableClasses(config.availableClasses || []);
 
       // 如果有当前配置，则设置默认筛选条件
@@ -27,6 +29,7 @@ export const useFilter = () => {
         setFilters({
           year: config.currentYear,
           grade: config.currentGrade,
+          semester: config.currentSemester,
         });
       }
     } catch (error) {
@@ -42,6 +45,7 @@ export const useFilter = () => {
     setFilters,
     availableYears,
     availableGrades,
+    availableSemesters,
     availableClasses,
     loading,
   };

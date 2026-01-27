@@ -46,9 +46,9 @@ if not USE_POSTGRESQL:
     from sqlalchemy.orm import sessionmaker
     
     # 默认数据库URL - 用于用户、文档等（优先使用环境变量）
-    DEFAULT_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./xbk.db")
+    DEFAULT_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///backend/xbk.db")
     # 智能体数据库URL - 用于AI智能体相关数据
-    AI_DATABASE_URL = os.getenv("AI_DATABASE_URL", "sqlite:///./znt.db")
+    AI_DATABASE_URL = os.getenv("AI_DATABASE_URL", "sqlite:///backend/znt.db")
     
     def configure_sqlite_engine(url, engine_name="default"):
         """创建并配置SQLite引擎，启用WAL模式和连接池"""

@@ -23,9 +23,9 @@ class DatabaseInitializer:
     """数据库初始化器"""
     
     def __init__(self):
-        # 从环境变量获取数据库路径
-        self.xbk_db_path = os.getenv("XBK_DB_PATH", "./xbk.db")
-        self.znt_db_path = os.getenv("ZNT_DB_PATH", "./znt.db")
+        # 从环境变量获取数据库路径，默认为backend目录下
+        self.xbk_db_path = os.getenv("XBK_DB_PATH", "backend/xbk.db")
+        self.znt_db_path = os.getenv("ZNT_DB_PATH", "backend/znt.db")
         
         # 管理员账户配置
         self.admin_config = {
@@ -63,6 +63,7 @@ class DatabaseInitializer:
                     上课地点 TEXT,
                     创建时间 TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     更新时间 TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    学年 TEXT DEFAULT '',
                     UNIQUE (年份, 年级, 课程代码)
                 )
             ''')
@@ -77,6 +78,7 @@ class DatabaseInitializer:
                     学号 TEXT NOT NULL,
                     姓名 TEXT NOT NULL,
                     性别 TEXT,
+                    学年 TEXT DEFAULT '',
                     创建时间 TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     更新时间 TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE (年份, 年级, 学号)
@@ -94,6 +96,7 @@ class DatabaseInitializer:
                     姓名 TEXT,
                     课程代码 TEXT NOT NULL,
                     课程名称 TEXT,
+                    学年 TEXT DEFAULT '',
                     创建时间 TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     更新时间 TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE (年份, 年级, 学号, 课程代码),
@@ -116,6 +119,7 @@ class DatabaseInitializer:
                     课程负责人 TEXT,
                     各班限报人数 INTEGER,
                     上课地点 TEXT,
+                    学年 TEXT DEFAULT '',
                     创建时间 TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE (年份, 年级, 学号, 课程代码)
                 )

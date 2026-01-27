@@ -23,17 +23,25 @@ async function request<T>(
     const response = await fetch(url, { ...options, headers });
     
     if (!response.ok) {
-      const errorData = await response.json().catch(() => {
-        return {};
-      });
-      throw new Error(
-        errorData.detail || `请求失败: ${response.status} ${response.statusText}`
-      );
+      // 尝试解析错误响应
+      let errorDetail = `请求失败: ${response.status} ${response.statusText}`;
+      try {
+        const errorData = await response.json();
+        errorDetail = errorData.detail || errorData.message || errorDetail;
+      } catch {
+        // 如果无法解析JSON，使用默认错误信息
+      }
+      throw new Error(errorDetail);
     }
 
     const result = await response.json();
     return result;
   } catch (error) {
+    // 处理网络错误（如fetch失败）
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      throw new Error(`无法连接到后端服务。请确保后端服务正在运行在 ${API_BASE_URL}`);
+    }
+    
     // 确保抛出的总是 Error 对象，并提供有意义的错误消息
     if (error instanceof Error) {
       throw error;
@@ -185,7 +193,7 @@ export const userManagementApi = {
 export const aiAgentApi = {
   // 获取所有智能体
   getAgents: (activeOnly = false, search?: string, apiType?: string) => {
-    let url = `/api/ai/agents?active_only=${activeOnly}`;
+    let url = `/api/ai/agents/?active_only=${activeOnly}`;
     if (search) url += `&search=${encodeURIComponent(search)}`;
     if (apiType) url += `&api_type=${encodeURIComponent(apiType)}`;
     return request<{ success: boolean; agents: any[]; total: number }>(url);

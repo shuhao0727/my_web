@@ -13,8 +13,10 @@ export const fetchSystemConfig = async (): Promise<SystemConfig> => {
     return {
       currentYear: result.current_year,
       currentGrade: result.current_grade,
+      currentSemester: result.current_semester,
       availableYears: result.available_years || [],
       availableGrades: result.available_grades || [],
+      availableSemesters: result.available_semesters || ['上半学年', '下半学年'],
       availableClasses: result.available_classes || [],
     };
   } catch (error) {
@@ -23,8 +25,10 @@ export const fetchSystemConfig = async (): Promise<SystemConfig> => {
     return {
       currentYear: 2025,
       currentGrade: '高一',
+      currentSemester: '上半学年',
       availableYears: [2024, 2025, 2026],
       availableGrades: ['高一', '高二', '高三'],
+      availableSemesters: ['上半学年', '下半学年'],
       availableClasses: ['1班', '2班', '3班', '4班', '5班', '6班'],
     };
   }
@@ -33,7 +37,7 @@ export const fetchSystemConfig = async (): Promise<SystemConfig> => {
 // 获取数据
 export const fetchData = async (filters: Filters): Promise<DataSet> => {
   try {
-    const { year, grade, class: className, searchText } = filters;
+    const { year, grade, semester, class: className, searchText } = filters;
     
     // 并行请求所有数据类型
     const dataTypes = ['catalog', 'student-info', 'course-selection', 'merged-data'];
@@ -41,6 +45,7 @@ export const fetchData = async (filters: Filters): Promise<DataSet> => {
       const params = new URLSearchParams();
       if (year) params.append('year', year.toString());
       if (grade) params.append('grade', grade);
+      if (semester) params.append('semester', semester);
       if (className) params.append('class_name', className);
       if (searchText) params.append('search_text', searchText);
       // 设置较大的page_size以获取所有数据
