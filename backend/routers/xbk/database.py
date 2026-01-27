@@ -8,8 +8,8 @@ from typing import Dict, Any, Tuple
 
 def get_db():
     """获取XBK数据库连接"""
-    # 从环境变量获取数据库路径，默认为xbk.db（当前目录）
-    db_path = os.getenv("XBK_DATABASE_URL", "xbk.db")
+    # 从环境变量获取数据库路径，默认为backend/xbk.db
+    db_path = os.getenv("XBK_DATABASE_URL", "/Users/wsh/Desktop/my_web/backend/xbk.db")
     # 处理sqlite:///前缀
     if db_path.startswith("sqlite:///"):
         db_path = db_path.replace("sqlite:///", "")
@@ -32,6 +32,10 @@ def build_where_clause(params: Dict[str, Any]) -> tuple:
     if params.get('grade'):
         conditions.append("年级 = ?")
         values.append(params['grade'])
+
+    if params.get('semester'):
+        conditions.append("学年 = ?")
+        values.append(params['semester'])
     
     if params.get('class_name'):
         conditions.append("班级 = ?")
@@ -53,6 +57,10 @@ def build_search_where_clause(params: Dict[str, Any], data_type: str) -> tuple:
     if params.get('grade'):
         conditions.append("年级 = ?")
         values.append(params['grade'])
+
+    if params.get('semester'):
+        conditions.append("学年 = ?")
+        values.append(params['semester'])
     
     if params.get('class_name'):
         conditions.append("班级 = ?")

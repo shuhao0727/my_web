@@ -64,6 +64,7 @@ const ImportModal: React.FC<ImportModalProps> = ({ visible, onCancel, onOk, filt
       await onOk(fileList, {
         year: values.year,
         grade: values.grade,
+        semester: values.semester,
         type: values.type,
       });
 
@@ -90,6 +91,11 @@ const ImportModal: React.FC<ImportModalProps> = ({ visible, onCancel, onOk, filt
     { value: 'course-selection', label: '选课结果' },
   ];
 
+  const semesterOptions = [
+    { value: '上半学年', label: '上半学年' },
+    { value: '下半学年', label: '下半学年' },
+  ];
+
   return (
     <Modal
       title="导入数据"
@@ -109,7 +115,7 @@ const ImportModal: React.FC<ImportModalProps> = ({ visible, onCancel, onOk, filt
         }}
       >
         <Row gutter={16}>
-          <Col span={12}>
+          <Col span={8}>
             <Form.Item
               label="年份"
               name="year"
@@ -126,7 +132,22 @@ const ImportModal: React.FC<ImportModalProps> = ({ visible, onCancel, onOk, filt
               />
             </Form.Item>
           </Col>
-          <Col span={12}>
+          <Col span={8}>
+            <Form.Item
+              label="学年"
+              name="semester"
+              rules={[{ required: false, message: '请选择学年' }]}
+            >
+              <Select placeholder="请选择学年">
+                {semesterOptions.map((option) => (
+                  <Option key={option.value} value={option.value}>
+                    {option.label}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col span={8}>
             <Form.Item
               label="年级"
               name="grade"

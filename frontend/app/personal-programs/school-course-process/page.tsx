@@ -33,6 +33,7 @@ export default function SchoolCourseProcessPage() {
     setFilters,
     availableYears,
     availableGrades,
+    availableSemesters,
     availableClasses,
     loading: filterLoading,
   } = useFilter();
@@ -114,6 +115,7 @@ export default function SchoolCourseProcessPage() {
           setFilters={setFilters}
           availableYears={availableYears}
           availableGrades={availableGrades}
+          availableSemesters={availableSemesters}
           availableClasses={availableClasses}
           loading={filterLoading}
         />

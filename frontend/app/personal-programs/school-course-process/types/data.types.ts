@@ -2,6 +2,7 @@ export interface CourseCatalog {
   id: number;
   年份: number;
   年级: string;
+  学年?: string;
   课程代码: string;
   课程名称: string;
   课程负责人?: string;
@@ -14,6 +15,7 @@ export interface StudentInfo {
   id: number;
   年份: number;
   年级: string;
+  学年?: string;
   班级: string;
   学号: string;
   姓名: string;
@@ -24,6 +26,7 @@ export interface CourseSelection {
   id: number;
   年份: number;
   年级: string;
+  学年?: string;
   班级: string;
   学号: string;
   姓名: string;
@@ -36,6 +39,7 @@ export interface MergedData {
   id: number;
   年份: number;
   年级: string;
+  学年?: string;
   班级: string;
   学号: string;
   姓名: string;
@@ -50,6 +54,7 @@ export interface MergedData {
 export interface Filters {
   year?: number;
   grade?: string;
+  semester?: string;
   class?: string;
   searchText?: string;
 }
@@ -64,6 +69,7 @@ export interface DataSet {
 export interface ImportSettings {
   year: number;
   grade: string;
+  semester?: string;
   type: 'catalog' | 'student-info' | 'course-selection';
 }
 
@@ -72,6 +78,7 @@ export interface ExportSettings {
   yearStart: number;                // 用于标题的起始年份
   yearEnd: number;                  // 用于标题的结束年份
   grade: string;                    // 用于数据库筛选的年级
+  semester?: string;                // 学年
   type: 'course-selection' | 'distribution' | 'teacher-distribution';
   format: 'xlsx' | 'xls';
 }
@@ -85,7 +92,9 @@ export interface AnalysisResult {
 export interface SystemConfig {
   currentYear?: number;
   currentGrade?: string;
+  currentSemester?: string;
   availableYears: number[];
   availableGrades: string[];
+  availableSemesters: string[];
   availableClasses: string[];
 }
