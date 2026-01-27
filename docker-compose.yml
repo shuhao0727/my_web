@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # 后端服务
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: myweb-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+      - CONTENT_DIR=/app/content
+      - DATABASE_URL=sqlite:///./xbk.db?check_same_thread=False
+      - AI_DATABASE_URL=sqlite:///./znt.db?check_same_thread=False
+    volumes:
+      - ./backend/content:/app/content
+      - ./backend/xbk.db:/app/xbk.db
+      - ./backend/znt.db:/app/znt.db
+      - ./backend/logs:/app/logs
+      - ./backend/backups:/app/backups
+    networks:
+      - myweb-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # 前端服务
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: myweb-frontend
+    restart: unless-stopped
+    ports:
+      - "6608:6608"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NODE_ENV=production
+    volumes:
+      - ./frontend/public:/app/public
+      - ./frontend/logs:/app/logs
+    depends_on:
+      - backend
+    networks:
+      - myweb-network
+
+# 网络配置
+networks:
+  myweb-network:
+    driver: bridge
+
+# 卷配置（用于数据持久化）
+volumes:
+  typst-content:
+  xbk-database:
+  znt-database:
+  backend-logs:
+  frontend-logs:
