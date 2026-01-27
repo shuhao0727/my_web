@@ -74,7 +74,9 @@ export const handleBatchExport = async (
       const maxLength = Math.max(
         header.length,
         ...selectedConversations.map(conv => {
-          const value = overviewData[selectedConversations.indexOf(conv) + 1][index];
+          const rowIndex = selectedConversations.indexOf(conv) + 1;
+          const row = overviewData[rowIndex];
+          const value = row ? row[index] : '';
           return String(value).length;
         })
       );
@@ -96,6 +98,8 @@ export const handleBatchExport = async (
     // 依次获取每个对话的详细信息
     for (let i = 0; i < selectedConversations.length; i++) {
       const conv = selectedConversations[i];
+      if (!conv) continue; // 跳过无效的对话
+      
       try {
         // 更新进度
         setExportProgress(i + 1);

@@ -5,11 +5,63 @@
 """
 import os
 import logging
+from pathlib import Path
 
+# 配置日志格式
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# 如果logger没有处理器，则添加一个控制台处理器
+if not logger.handlers:
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
+
+def find_database_file(filename, search_paths=None):
+    """
+    智能查找数据库文件路径，始终返回绝对路径
+    搜索顺序:
+    1. 当前工作目录
+    2. backend/目录
+    3. 项目根目录
+    4. 指定的搜索路径
+    """
+    if search_paths is None:
+        search_paths = []
+    
+    # 默认搜索路径
+    default_paths = [
+        filename,  # 当前目录
+        f"backend/{filename}",  # backend目录
+        f"../backend/{filename}",  # 上级的backend目录（如果从子目录运行）
+        f"../../backend/{filename}",  # 更上级的backend目录
+        f"/Users/wsh/Desktop/my_web/backend/{filename}",  # 绝对路径
+    ]
+    
+    all_paths = default_paths + search_paths
+    
+    for path in all_paths:
+        # 尝试绝对路径
+        abs_path = Path(path).absolute()
+        if abs_path.exists():
+            logger.info(f"🔍 找到数据库文件 {filename}: {abs_path}")
+            return str(abs_path)
+        
+        # 尝试相对路径
+        if Path(path).exists():
+            abs_path = Path(path).absolute()
+            logger.info(f"🔍 找到数据库文件 {filename}: {abs_path}")
+            return str(abs_path)
+    
+    # 如果没找到，返回传入的文件名（可能是相对路径）
+    logger.warning(f"⚠️  未找到数据库文件 {filename}，将使用默认路径: {filename}")
+    return filename
 
 # 根据环境变量选择使用PostgreSQL还是SQLite
 USE_POSTGRESQL = os.getenv("USE_POSTGRESQL", "true").lower() == "true"
+logger.info(f"📊 数据库模式配置: USE_POSTGRESQL={USE_POSTGRESQL}, 环境变量值={os.getenv('USE_POSTGRESQL')}")
 
 if USE_POSTGRESQL:
     try:
@@ -46,15 +98,61 @@ if not USE_POSTGRESQL:
     from sqlalchemy.orm import sessionmaker
     
     # 默认数据库URL - 用于用户、文档等（优先使用环境变量）
-    DEFAULT_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///backend/xbk.db")
+    DATABASE_URL_ENV = os.getenv("DATABASE_URL")
+    if DATABASE_URL_ENV:
+        DEFAULT_DATABASE_URL = DATABASE_URL_ENV
+    else:
+        # 直接使用绝对路径
+        db_path = str(Path(__file__).parent.parent / "xbk.db")
+        DEFAULT_DATABASE_URL = f"sqlite:///{db_path}"
+        logger.info(f"🔧 设置默认数据库URL: {DEFAULT_DATABASE_URL}")
+    
     # 智能体数据库URL - 用于AI智能体相关数据
-    AI_DATABASE_URL = os.getenv("AI_DATABASE_URL", "sqlite:///backend/znt.db")
+    AI_DATABASE_URL_ENV = os.getenv("AI_DATABASE_URL")
+    if AI_DATABASE_URL_ENV:
+        AI_DATABASE_URL = AI_DATABASE_URL_ENV
+    else:
+        # 直接使用绝对路径
+        db_path = str(Path(__file__).parent.parent / "znt.db")
+        AI_DATABASE_URL = f"sqlite:///{db_path}"
+        logger.info(f"🔧 设置AI数据库URL: {AI_DATABASE_URL}")
     
     def configure_sqlite_engine(url, engine_name="default"):
         """创建并配置SQLite引擎，启用WAL模式和连接池"""
+        from sqlalchemy import create_engine, event
+        from pathlib import Path
+        import os
+        
         if "sqlite" not in url:
             # 非SQLite数据库，使用默认配置
             return create_engine(url)
+        
+        # 如果是SQLite，确保使用绝对路径
+        if url.startswith("sqlite:///"):
+            # 提取路径部分
+            db_path = url.replace("sqlite:///", "")
+            
+            # 使用智能查找函数获取数据库文件的绝对路径
+            abs_path = find_database_file(db_path)
+            # 确保是绝对路径
+            abs_path = str(Path(abs_path).absolute())
+            
+            # 使用三个斜杠的格式（SQLAlchemy推荐）
+            url = f"sqlite:///{abs_path}"
+            logger.info(f"🔧 将SQLite路径转换为绝对路径: {abs_path}")
+            
+            # 删除可能存在的WAL文件以避免锁定问题
+            wal_path = f"{abs_path}-wal"
+            shm_path = f"{abs_path}-shm"
+            journal_path = f"{abs_path}-journal"
+            
+            for lock_file in [wal_path, shm_path, journal_path]:
+                if os.path.exists(lock_file):
+                    try:
+                        os.remove(lock_file)
+                        logger.info(f"🗑️  删除锁文件: {lock_file}")
+                    except Exception as e:
+                        logger.warning(f"⚠️  删除锁文件 {lock_file} 失败: {e}")
         
         # SQLite连接参数
         connect_args = {"check_same_thread": False}
@@ -94,7 +192,7 @@ if not USE_POSTGRESQL:
                 logger.warning(f"⚠️  配置{engine_name}数据库PRAGMA失败: {e}")
         
         return engine
-    
+
     # 创建优化后的数据库引擎
     default_engine = configure_sqlite_engine(DEFAULT_DATABASE_URL, "默认")
     ai_engine = configure_sqlite_engine(AI_DATABASE_URL, "AI智能体")
@@ -151,27 +249,28 @@ if not USE_POSTGRESQL:
         ]
         
         for db_name, db_url in databases:
-            if "sqlite" in db_url:
-                # 从URL提取路径
-                db_path = db_url.replace("sqlite:///", "")
-                if db_path.startswith("./"):
-                    db_path = db_path[2:]
-                
-                if Path(db_path).exists():
-                    try:
-                        conn = sqlite3.connect(db_path)
-                        cursor = conn.cursor()
-                        cursor.execute("PRAGMA journal_mode=WAL")
-                        cursor.execute("PRAGMA synchronous=NORMAL")
-                        cursor.execute("PRAGMA cache_size=-2000")
-                        cursor.execute("PRAGMA foreign_keys=ON")
-                        cursor.close()
-                        conn.close()
-                        logger.info(f"✅ 现有数据库 {db_name} 已优化为WAL模式")
-                    except Exception as e:
-                        logger.warning(f"⚠️  优化现有数据库 {db_name} 失败: {e}")
-                else:
-                    logger.info(f"ℹ️  数据库文件 {db_path} 不存在，将在首次使用时创建并优化")
+            # 直接使用智能查找函数获取数据库文件的绝对路径
+            db_path_abs = find_database_file(db_name)
+            # 确保是绝对路径
+            db_path_abs = str(Path(db_path_abs).absolute())
+            
+            logger.info(f"🔧 优化数据库 {db_name}，绝对路径: {db_path_abs}")
+            
+            if Path(db_path_abs).exists():
+                try:
+                    conn = sqlite3.connect(db_path_abs)
+                    cursor = conn.cursor()
+                    cursor.execute("PRAGMA journal_mode=WAL")
+                    cursor.execute("PRAGMA synchronous=NORMAL")
+                    cursor.execute("PRAGMA cache_size=-2000")
+                    cursor.execute("PRAGMA foreign_keys=ON")
+                    cursor.close()
+                    conn.close()
+                    logger.info(f"✅ 现有数据库 {db_name} 已优化为WAL模式")
+                except Exception as e:
+                    logger.warning(f"⚠️  优化现有数据库 {db_name} 失败: {e}")
+            else:
+                logger.info(f"ℹ️  数据库文件 {db_path_abs} 不存在，将在首次使用时创建并优化")
 
 # 导出统一的接口
 __all__ = [

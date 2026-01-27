@@ -104,7 +104,11 @@ export const fetchData = async (filters: Filters): Promise<DataSet> => {
 export const importData = async (files: File[], settings: ImportSettings): Promise<void> => {
   try {
     const formData = new FormData();
-    formData.append('file', files[0]);
+    const file = files[0];
+    if (!file) {
+      throw new Error('请选择要导入的文件');
+    }
+    formData.append('file', file);
     
     const params = new URLSearchParams({
       year: settings.year.toString(),

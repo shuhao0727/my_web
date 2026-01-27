@@ -63,7 +63,10 @@ export default function AiLabPage() {
       const response = await aiApi.agent.getAgents(true);
       if (response.success && response.agents.length > 0) {
         setAiAgents(response.agents);
-        setSelectedAgent(response.agents[0]);
+        // 安全设置第一个智能体
+        if (response.agents[0]) {
+          setSelectedAgent(response.agents[0]);
+        }
       } else {
         // 如果没有智能体，创建一些默认的
         const defaultAgents: AiAgent[] = [
@@ -73,7 +76,10 @@ export default function AiLabPage() {
           { id: 4, name: '学习规划顾问', description: '制定学习计划', icon: '📚', api_type: 'mock', is_active: true },
         ];
         setAiAgents(defaultAgents);
-        setSelectedAgent(defaultAgents[0]);
+        // 安全设置第一个智能体
+        if (defaultAgents[0]) {
+          setSelectedAgent(defaultAgents[0]);
+        }
       }
     } catch (error) {
       console.error('加载AI智能体失败:', error);
@@ -85,7 +91,10 @@ export default function AiLabPage() {
         { id: 4, name: '学习规划顾问', description: '制定学习计划', icon: '📚', api_type: 'mock', is_active: true },
       ];
       setAiAgents(defaultAgents);
+      // 安全设置第一个智能体
+      if (defaultAgents[0]) {
         setSelectedAgent(defaultAgents[0]);
+      }
     } finally {
       setLoadingAgents(false);
     }
@@ -244,12 +253,12 @@ export default function AiLabPage() {
         const [, year, month, day, hour, minute, second] = match;
         // 注意：月份从0开始（0=一月）
         const utcDate = new Date(Date.UTC(
-          parseInt(year, 10),
-          parseInt(month, 10) - 1,
-          parseInt(day, 10),
-          parseInt(hour, 10),
-          parseInt(minute, 10),
-          parseInt(second, 10)
+          parseInt(year!, 10),
+          parseInt(month!, 10) - 1,
+          parseInt(day!, 10),
+          parseInt(hour!, 10),
+          parseInt(minute!, 10),
+          parseInt(second!, 10)
         ));
         parsedDate = utcDate;
         console.log('方式3 - UTC解析结果:', parsedDate.toString());

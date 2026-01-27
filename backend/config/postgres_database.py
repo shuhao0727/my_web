@@ -212,6 +212,10 @@ def optimize_database_performance():
     执行数据库性能优化
     包括索引创建、统计信息更新等
     """
+    # 仅在PostgreSQL模式下执行性能优化
+    if not USE_POSTGRESQL:
+        logger.info("ℹ️  SQLite模式，跳过数据库性能优化")
+        return
     try:
         with default_engine.connect() as conn:
             # 创建常用索引（根据实际表结构调整）
@@ -253,8 +257,8 @@ def optimize_database_performance():
     except Exception as e:
         logger.error(f"❌ 数据库性能优化失败: {e}")
 
-# 应用启动时自动优化
-if __name__ != "__main__":
+# 应用启动时自动优化（仅在PostgreSQL模式下执行）
+if __name__ != "__main__" and USE_POSTGRESQL:
     # 在应用启动时执行一次性能优化
     import threading
     threading.Thread(target=optimize_database_performance, daemon=True).start()

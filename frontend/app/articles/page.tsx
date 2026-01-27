@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 
@@ -22,7 +22,7 @@ interface TableOfContentsItem {
   level: number;
 }
 
-export default function ArticlesPage() {
+function ArticlesPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const slug = searchParams.get("slug");
@@ -121,7 +121,7 @@ export default function ArticlesPage() {
     
     lines.forEach((line) => {
       const headingMatch = line.match(/^(#{1,3})\s+(.+)$/);
-      if (headingMatch) {
+      if (headingMatch && headingMatch[1] && headingMatch[2]) {
         const level = headingMatch[1].length;
         const text = headingMatch[2].trim();
         
@@ -382,5 +382,20 @@ export default function ArticlesPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ArticlesPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">正在加载文章列表...</p>
+        </div>
+      </div>
+    }>
+      <ArticlesPageContent />
+    </Suspense>
   );
 }

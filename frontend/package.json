@@ -11,7 +11,7 @@
     "@ant-design/icons": "^6.1.0",
     "antd": "^6.2.0",
     "axios": "^1.13.2",
-    "next": "16.1.2",
+    "next": "16.1.5",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-markdown": "^10.1.0",

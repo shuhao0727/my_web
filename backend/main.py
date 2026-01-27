@@ -35,6 +35,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
+import os
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -64,16 +65,34 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"⚠️  数据库优化失败: {e}")
     
-    # 启动自动同步调度器（临时禁用以避免启动阻塞）
-    # try:
-    #     from scheduler.sync_scheduler import repo_sync_scheduler
-    #     if repo_sync_scheduler.start():
-    #         print("✅ 仓库自动同步调度器已启动")
-    #     else:
-    #         print("⚠️  仓库自动同步调度器未启动（可能已禁用或已在运行）")
-    # except Exception as e:
-    #     print(f"❌ 启动自动同步调度器失败: {e}")
-    print("⚠️  仓库自动同步调度器已临时禁用（避免网络连接阻塞）")
+    # 启动自动同步调度器（增加错误恢复机制）
+    try:
+        from scheduler.sync_scheduler import repo_sync_scheduler
+        # 检查是否启用自动同步
+        enable_auto_sync = os.getenv("ENABLE_AUTO_SYNC", "True").lower() == "true"
+        if enable_auto_sync:
+            # 在后台线程中启动调度器，避免阻塞主应用启动
+            import threading
+            def start_scheduler_safe():
+                try:
+                    if repo_sync_scheduler.start():
+                        print("✅ 仓库自动同步调度器已启动")
+                    else:
+                        print("⚠️  仓库自动同步调度器未启动（可能已禁用或已在运行）")
+                except Exception as e:
+                    print(f"❌ 启动自动同步调度器失败: {e}")
+                    # 记录错误但不影响应用启动
+                    # 可以在这里添加重试逻辑或告警
+            
+            scheduler_thread = threading.Thread(target=start_scheduler_safe, daemon=True)
+            scheduler_thread.start()
+            print("✅ 仓库自动同步调度器启动线程已启动（后台运行）")
+        else:
+            print("ℹ️  自动同步已禁用，跳过调度器启动")
+    except ImportError as e:
+        print(f"❌ 导入调度器模块失败: {e}")
+    except Exception as e:
+        print(f"❌ 配置自动同步调度器时发生异常: {e}")
     
     yield
     
@@ -96,22 +115,76 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# 配置CORS
-origins = [
-    "http://localhost:3000",
-    "http://localhost:6608",
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:6608",
-    "*",  # 临时允许所有来源用于调试
-]
+# 配置CORS - 根据环境设置合适的白名单
+is_production = os.getenv("ENVIRONMENT", "development").lower() == "production"
+if is_production:
+    # 生产环境：只允许特定的来源
+    allowed_origins = [
+        "https://your-domain.com",  # 替换为实际的生产域名
+        "https://www.your-domain.com",
+    ]
+    print(f"✅ 生产环境CORS配置：{allowed_origins}")
+else:
+    # 开发环境：允许常见的本地开发地址
+    allowed_origins = [
+        "http://localhost:3000",
+        "http://localhost:6608", 
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:6608",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ]
+    print(f"✅ 开发环境CORS配置：{allowed_origins}")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 临时允许所有来源
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],
 )
+
+# 添加API速率限制中间件（仅在非开发环境启用）
+enable_rate_limit = os.getenv("ENABLE_RATE_LIMIT", "false").lower() == "true"
+if enable_rate_limit or is_production:
+    try:
+        from middleware.rate_limit import RateLimitMiddleware
+        # 生产环境使用更严格的限制，开发环境宽松
+        requests_per_minute = 60 if is_production else 120
+        app.add_middleware(RateLimitMiddleware, requests_per_minute=requests_per_minute)
+        print(f"✅ API速率限制已启用：每分钟{requests_per_minute}次请求")
+    except ImportError as e:
+        print(f"⚠️  导入速率限制中间件失败: {e}")
+    except Exception as e:
+        print(f"❌ 配置速率限制中间件失败: {e}")
+else:
+    print("ℹ️  API速率限制已禁用")
+
+# 添加全局错误处理中间件
+try:
+    from middleware.error_handler import setup_error_handlers
+    is_development = os.getenv("ENVIRONMENT", "development").lower() != "production"
+    setup_error_handlers(app, is_development=is_development)
+    print("✅ 全局错误处理中间件已设置")
+except ImportError as e:
+    print(f"⚠️  导入错误处理中间件失败: {e}")
+except Exception as e:
+    print(f"❌ 配置错误处理中间件失败: {e}")
+
+# 添加静态文件缓存中间件（仅在非开发环境启用）
+enable_static_cache = os.getenv("ENABLE_STATIC_CACHE", "true").lower() == "true"
+if enable_static_cache or is_production:
+    try:
+        from middleware.static_cache import setup_static_cache
+        setup_static_cache(app, static_path="/content", enable_gzip=True)
+        print("✅ 静态文件缓存中间件已设置")
+    except ImportError as e:
+        print(f"⚠️  导入静态文件缓存中间件失败: {e}")
+    except Exception as e:
+        print(f"❌ 配置静态文件缓存中间件失败: {e}")
+else:
+    print("ℹ️  静态文件缓存已禁用")
 
 # 注册静态文件服务
 # 1. 静态PDF缓存目录

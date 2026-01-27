@@ -7,11 +7,14 @@ from pathlib import Path
 import subprocess
 import tempfile
 import base64
-from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import JSONResponse
+import hashlib
+import json
 import logging
 from typing import List, Optional
-import json
+from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import JSONResponse
+
+from services.redis_cache import cache, CachePrefix
 
 logger = logging.getLogger(__name__)
 
@@ -295,6 +298,30 @@ def format_category_name(category: str) -> str:
     
     return category.replace('-', ' ').title()
 
+def generate_typst_cache_key(filepath: str, output_format: str, repo_dir: Path) -> str:
+    """生成Typst渲染缓存键
+    
+    Args:
+        filepath: Typst文件相对路径
+        output_format: 输出格式 (svg/pdf)
+        repo_dir: 仓库目录
+        
+    Returns:
+        缓存键字符串
+    """
+    typst_file = repo_dir / filepath
+    # 获取文件修改时间，以确保文件变化时缓存失效
+    mtime = typst_file.stat().st_mtime if typst_file.exists() else 0
+    # 创建缓存键：使用前缀、文件路径、修改时间和输出格式
+    key_data = f"{filepath}:{mtime}:{output_format}"
+    # 使用SHA256生成短哈希
+    key_hash = hashlib.sha256(key_data.encode()).hexdigest()[:16]
+    return f"{CachePrefix.CONTENT}:typst:render:{key_hash}"
+
+def get_typst_cache_prefix() -> str:
+    """获取Typst缓存键前缀"""
+    return f"{CachePrefix.CONTENT}:typst:render:"
+
 # 健康检查端点
 @router.get("/api/typst/health")
 async def typst_health_check():
@@ -404,7 +431,7 @@ async def compile_typst(request: dict):
         raise HTTPException(status_code=500, detail=error_msg)
 
 @router.get("/api/typst/render/{filepath:path}")
-async def render_typst_file(filepath: str, output_format: str = Query("svg", regex="^(svg|pdf)$")):
+async def render_typst_file(filepath: str, output_format: str = Query("svg", pattern="^(svg|pdf)$")):
     """渲染Typst文件为SVG或PDF
     
     Args:
@@ -436,6 +463,17 @@ async def render_typst_file(filepath: str, output_format: str = Query("svg", reg
         # 检查文件扩展名
         if typst_file.suffix.lower() != ".typ":
             raise HTTPException(status_code=400, detail=f"不支持的文件类型: {typst_file.suffix}")
+        
+        # 生成缓存键
+        cache_key = generate_typst_cache_key(filepath, output_format, repo_dir)
+        
+        # 尝试从缓存获取
+        cached_result = cache.get(cache_key)
+        if cached_result is not None:
+            logger.info(f"缓存命中: {filepath} ({output_format})")
+            return cached_result
+        
+        logger.info(f"缓存未命中，开始渲染: {filepath} ({output_format})")
         
         # 创建临时目录用于输出
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -486,8 +524,8 @@ async def render_typst_file(filepath: str, output_format: str = Query("svg", reg
                     svg_contents.append(content)
                     total_size += len(content)
                 
-                # 返回多个SVG内容
-                return {
+                # 缓存渲染结果（6小时）
+                result = {
                     "success": True,
                     "format": output_format,
                     "content": svg_contents,  # 现在是数组
@@ -495,6 +533,8 @@ async def render_typst_file(filepath: str, output_format: str = Query("svg", reg
                     "size": total_size,
                     "page_count": len(svg_contents),
                 }
+                cache.set(cache_key, result, ttl=21600)
+                return result
             else:  # pdf
                 # 对于PDF，输出单个文件
                 output_filename = f"output.pdf"
@@ -526,13 +566,16 @@ async def render_typst_file(filepath: str, output_format: str = Query("svg", reg
                 # 返回base64编码
                 compiled_content = base64.b64encode(compiled_content).decode("utf-8")
                 content_type = "application/pdf"
-                return {
+                # 缓存PDF渲染结果（6小时）
+                result = {
                     "success": True,
                     "format": output_format,
                     "content": compiled_content,
                     "content_type": content_type,
                     "size": len(compiled_content),
                 }
+                cache.set(cache_key, result, ttl=21600)
+                return result
             
     except subprocess.TimeoutExpired:
         error_msg = "编译超时（30秒）"

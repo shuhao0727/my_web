@@ -78,9 +78,11 @@ export default function ArticleDetailPage() {
       // 如果没有找到，则选择最后一个在视口上方的标题
       if (!currentAnchor) {
         for (let i = headings.length - 1; i >= 0; i--) {
-          const rect = headings[i].element?.getBoundingClientRect();
+          const heading = headings[i];
+          if (!heading) continue;
+          const rect = heading.element?.getBoundingClientRect();
           if (rect && rect.top < 0) {
-            currentAnchor = headings[i].id;
+            currentAnchor = heading.id;
             break;
           }
         }

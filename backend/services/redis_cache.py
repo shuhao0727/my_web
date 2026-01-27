@@ -212,6 +212,9 @@ class RedisCache:
     
     def is_connected(self) -> bool:
         """检查Redis是否连接成功"""
+        if self._use_mock:
+            # 模拟模式总是返回True
+            return True
         if not self._connected or self._client is None:
             return False
         try:
