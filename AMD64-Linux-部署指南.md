@@ -236,18 +236,27 @@ docker login
 docker pull yourusername/my_web-backend:latest
 ```
 
-### 常见问题 2：端口冲突
+### 常见问题 2：端口冲突（特别是443端口被dify占用）
 
 ```bash
-# 检查端口占用
+# 检查端口占用情况
 sudo netstat -tulpn | grep :80
 sudo netstat -tulpn | grep :443
 
-# 修改 docker-compose.prod.yml 中的端口映射
+# 如果443端口被dify或其他服务占用，可以修改为8443端口
+# 修改 docker-compose.prod.yml 中的端口映射：
 ports:
-  - "8080:80"    # 修改外部端口
-  - "8443:443"
+  - "80:80"      # HTTP端口保持不变
+  - "8443:443"   # 将HTTPS端口从443改为8443，避免与dify冲突
+
+# 修改后还需要更新CORS配置中的端口引用
+# 在docker-compose.prod.yml中修改CORS_ORIGINS环境变量：
+# CORS_ORIGINS=http://nginx,http://localhost,http://localhost:80,http://localhost:8443
 ```
+
+**注意**：修改端口后访问地址变为：
+- HTTP: http://your-domain.com:80 (或直接 http://your-domain.com)
+- HTTPS: https://your-domain.com:8443
 
 ### 常见问题 3：数据库权限问题
 

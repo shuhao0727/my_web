@@ -8,7 +8,7 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
-      - "443:443"
+      - "8443:443"
     volumes:
       - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf
       - ./deploy/nginx/ssl:/etc/nginx/ssl
@@ -44,7 +44,7 @@ services:
       - DIFY_APP_ID=${DIFY_APP_ID}
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
       - SECRET_KEY=${SECRET_KEY:-change_this_to_a_secure_random_string}
-      - CORS_ORIGINS=http://localhost,http://localhost:80,http://localhost:443,http://nginx
+      - CORS_ORIGINS=http://localhost,http://localhost:80,http://localhost:8443,http://nginx
     volumes:
       - xbk-database:/app/xbk.db
       - znt-database:/app/znt.db
