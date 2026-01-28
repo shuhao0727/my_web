@@ -25,11 +25,15 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  // 配置API代理 - 使用环境变量
+  // 配置API代理 - 优先使用环境变量，开发环境使用localhost
   async rewrites() {
-    // 强制使用容器内部地址，确保生产环境稳定
-    const apiUrl = 'http://backend:8000';
-    console.log('API Proxy URL (hardcoded):', apiUrl);
+    // 开发环境使用localhost，生产环境使用backend容器地址
+    const isProduction = process.env.NODE_ENV === 'production';
+    const apiUrl = isProduction 
+      ? 'http://backend:8000' 
+      : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    
+    console.log('API Proxy URL:', apiUrl, '(Environment:', process.env.NODE_ENV, ')');
     
     return [
       {
@@ -43,6 +47,10 @@ const nextConfig: NextConfig = {
       {
         source: '/api/repo/:path*',
         destination: `${apiUrl}/api/repo/:path*`,
+      },
+      {
+        source: '/api/typst/:path*',
+        destination: `${apiUrl}/api/typst/:path*`,
       },
       {
         source: '/api/health',

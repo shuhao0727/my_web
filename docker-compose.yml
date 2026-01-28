@@ -1,3 +1,9 @@
+# ========================================
+# MyWeb - 基础Docker Compose配置文件
+# 默认开发环境配置，使用.env文件中的环境变量
+# 用法：docker-compose up -d
+# ========================================
+
 version: '3.8'
 
 services:
@@ -6,23 +12,39 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: myweb-backend
+    container_name: ${BACKEND_CONTAINER_NAME:-myweb-backend}
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "${BACKEND_PORT:-8000}:8000"
     environment:
-      - ENVIRONMENT=development
-      - DEBUG=true
-      - LOG_LEVEL=DEBUG
-      - CONTENT_DIR=/app/content
-      - DATABASE_URL=sqlite:////app/xbk.db?check_same_thread=False
-      - AI_DATABASE_URL=sqlite:////app/znt.db?check_same_thread=False
-      - XBK_DATABASE_URL=sqlite:////app/xbk.db?check_same_thread=False
-      - USE_POSTGRESQL=false
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - DEBUG=${DEBUG:-true}
+      - LOG_LEVEL=${LOG_LEVEL:-DEBUG}
+      - CONTENT_DIR=/backend/content
+      - DATABASE_URL=sqlite:////backend/xbk.db?check_same_thread=False
+      - AI_DATABASE_URL=sqlite:////backend/znt.db?check_same_thread=False
+      - XBK_DATABASE_URL=sqlite:////backend/xbk.db?check_same_thread=False
+      - USE_POSTGRESQL=${USE_POSTGRESQL:-false}
+      # 管理员账户
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+      - WANGSHU_USERNAME=${WANGSHU_USERNAME:-wangshu0727}
+      - WANGSHU_PASSWORD=${WANGSHU_PASSWORD:-wangshu123}
+      # 安全配置
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      # GitHub同步配置
+      - GITHUB_ACCESS_TOKEN=${GITHUB_ACCESS_TOKEN:-}
+      - GITHUB_REPO_OWNER=${GITHUB_REPO_OWNER:-}
+      - GITHUB_REPO_NAME=${GITHUB_REPO_NAME:-}
+      - GITHUB_REPO_BRANCH=${GITHUB_REPO_BRANCH:-main}
+      - SYNC_INTERVAL_SECONDS=${SYNC_INTERVAL_SECONDS:-86400}
+      - ENABLE_AUTO_SYNC=${ENABLE_AUTO_SYNC:-true}
     volumes:
-      - ./backend/content:/app/content
-      - ./backend/xbk.db:/app/xbk.db
-      - ./backend/znt.db:/app/znt.db
+      - ./backend/content:/backend/content
+      - ./backend/xbk.db:/backend/xbk.db
+      - ./backend/znt.db:/backend/znt.db
       - ./backend/logs:/app/logs
       - ./backend/backups:/app/backups
     networks:
@@ -39,29 +61,27 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    image: my_web-frontend
-    container_name: myweb-frontend
+    container_name: ${FRONTEND_CONTAINER_NAME:-myweb-frontend}
     restart: unless-stopped
     ports:
-      - "6608:6608"
+      - "${FRONTEND_PORT:-6608}:6608"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
-      - NEXT_PUBLIC_API_URL_INTERNAL=http://backend:8000
-      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=6608
+      - HOST=0.0.0.0
     depends_on:
       - backend
     networks:
       - myweb-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6608"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 # 网络配置
 networks:
   myweb-network:
     driver: bridge
-
-# 卷配置（用于数据持久化）
-volumes:
-  typst-content:
-  xbk-database:
-  znt-database:
-  backend-logs:
-  frontend-logs:

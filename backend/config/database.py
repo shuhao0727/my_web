@@ -22,26 +22,64 @@ if not logger.handlers:
     ch.setFormatter(formatter)
     logger.addHandler(ch)
 
-# 固定数据库路径（相对于项目根目录）
+# 统一数据库路径（绝对路径）
+# 开发环境和部署环境都使用 /backend 目录
+XBK_DB_PATH = "/backend/xbk.db"
+ZNT_DB_PATH = "/backend/znt.db"
 
-XBK_DB_PATH = "backend/xbk.db"
-ZNT_DB_PATH = "backend/znt.db"
-
-def get_absolute_db_path(relative_path):
-    """将相对路径转换为绝对路径（基于项目根目录）"""
-    # 获取项目根目录（/Users/wsh/Desktop/my_web）
-    # database.py 在 backend/config/ 目录下，所以 parent.parent 是项目根目录
-    project_root = Path(__file__).parent.parent.parent
-    abs_path = str(project_root / relative_path)
-    logger.info(f"数据库绝对路径: {abs_path}")
-    return abs_path
+def get_absolute_db_path(db_path):
+    """获取数据库绝对路径，智能处理容器内路径和本地路径映射"""
+    # 检查是否是容器内路径（以 '/' 开头）
+    if db_path.startswith('/'):
+        # 判断是否是容器环境（通过环境变量或文件系统检查）
+        # 如果 /backend 目录存在且可写，说明在容器环境中
+        # 否则，我们将容器内路径映射到本地开发环境路径
+        container_root = Path('/')
+        mapped_path = container_root / db_path.lstrip('/')
+        
+        # 尝试在容器内环境中创建路径（如果是容器环境）
+        try:
+            # 检查是否是容器环境 - 如果 /app 目录存在（Docker容器的工作目录）
+            if Path('/app').exists() and mapped_path.parent.exists():
+                # 在容器环境中，保持容器内路径
+                abs_path = str(mapped_path)
+                logger.info(f"数据库绝对路径（容器内）: {abs_path}")
+                return abs_path
+        except Exception:
+            pass
+        
+        # 不在容器环境中，将容器内路径映射到本地项目路径
+        # 例如：/backend/xbk.db -> /Users/wsh/Desktop/my_web/backend/xbk.db
+        project_root = Path(__file__).parent.parent.parent
+        # 去除路径开头的 '/backend/' 部分
+        if db_path.startswith('/backend/'):
+            relative_part = db_path[len('/backend/'):]
+            abs_path = str(project_root / "backend" / relative_part)
+        else:
+            # 对于其他容器内路径，直接附加到项目根目录
+            relative_part = db_path.lstrip('/')
+            abs_path = str(project_root / relative_part)
+        
+        logger.info(f"数据库绝对路径（本地映射）: {abs_path}")
+        return abs_path
+    else:
+        # 相对路径（基于项目根目录）
+        # database.py 在 backend/config/ 目录下，所以 parent.parent 是项目根目录
+        project_root = Path(__file__).parent.parent.parent
+        abs_path = str(project_root / db_path)
+        logger.info(f"数据库绝对路径（本地）: {abs_path}")
+        return abs_path
 
 def create_sqlite_engine(db_path, engine_name="SQLite"):
     """创建SQLite数据库引擎"""
     abs_path = get_absolute_db_path(db_path)
     
-    # 确保目录存在
-    Path(abs_path).parent.mkdir(parents=True, exist_ok=True)
+    # 确保目录存在（仅在不是容器内绝对路径时）
+    if not abs_path.startswith('/'):
+        Path(abs_path).parent.mkdir(parents=True, exist_ok=True)
+        logger.info(f"✅ 本地目录已确保: {Path(abs_path).parent}")
+    else:
+        logger.info(f"ℹ️  容器内路径，跳过目录创建: {abs_path}")
     
     logger.info(f"创建{engine_name}引擎: {abs_path}")
     

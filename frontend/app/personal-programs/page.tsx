@@ -64,10 +64,12 @@ export default function PersonalProgramsPage() {
     }
   };
 
-  // 登录函数 - 使用JWT安全认证
+  // 登录函数 - 使用JWT安全认证（修复响应体重复读取问题，增强调试输出）
   const handleLogin = async (values: { name: string; studentId: string }) => {
     setLoginLoading(true);
     try {
+      console.log('登录请求发送:', values);
+      
       const response = await fetch('/api/xbk/auth/login', {
         method: 'POST',
         headers: {
@@ -79,17 +81,42 @@ export default function PersonalProgramsPage() {
         }),
       });
 
-      // 检查响应内容类型
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text();
-        console.error('非JSON响应:', text.substring(0, 200));
-        throw new Error(`服务器返回了非JSON响应 (${response.status}): ${text.substring(0, 100)}`);
+      // 先读取响应文本（避免重复读取响应体）
+      const responseText = await response.text();
+      console.log('登录响应状态:', response.status, response.statusText);
+      console.log('登录响应文本:', responseText.substring(0, 300));
+      
+      let data: any;
+      try {
+        // 尝试解析JSON
+        data = JSON.parse(responseText);
+        console.log('JSON解析成功:', data);
+      } catch (parseError) {
+        // JSON解析失败，说明服务器返回了非JSON响应（可能是HTML错误页面或纯文本错误）
+        console.error('JSON解析失败，响应文本:', responseText.substring(0, 200));
+        
+        // 检查是否为HTML错误页面（包含<html>标签）
+        if (responseText.toLowerCase().includes('<html>') || 
+            responseText.toLowerCase().includes('<!doctype html>')) {
+          // 这是HTML错误页面
+          if (response.status >= 500) {
+            throw new Error('服务器发生内部错误，请稍后重试');
+          } else if (response.status >= 400) {
+            throw new Error('请求错误，请检查网络连接');
+          } else {
+            throw new Error('服务器返回了非预期的响应格式');
+          }
+        } else if (responseText.includes('Internal Server Error')) {
+          // 纯文本的Internal Server Error
+          throw new Error('服务器内部错误，请稍后重试');
+        } else {
+          // 其他文本响应
+          throw new Error(`服务器响应格式错误 (${response.status}): ${responseText.substring(0, 100)}`);
+        }
       }
 
-      const data = await response.json();
-
       if (response.ok && data.success) {
+        console.log('登录成功，用户数据:', data.user);
         // 保存用户信息和JWT token到localStorage
         const userData = {
           ...data.user,
@@ -107,11 +134,28 @@ export default function PersonalProgramsPage() {
         setLoginModalVisible(false);
         loginForm.resetFields();
       } else {
-        throw new Error(data.detail || data.message || `登录失败: ${response.status}`);
+        // 处理错误响应（包括401、500等）
+        const errorMessage = data.error?.message || 
+                           data.detail || 
+                           data.message || 
+                           `登录失败: ${response.status} ${response.statusText}`;
+        console.error('登录失败:', errorMessage, data);
+        throw new Error(errorMessage);
       }
     } catch (error: any) {
       console.error('登录错误:', error);
-      message.error(error.message || '登录失败，请检查姓名和学号');
+      // 提供更友好的错误信息
+      let userMessage = error.message || '登录失败，请检查姓名和学号';
+      if (userMessage.includes('Internal Server Error') || userMessage.includes('服务器内部错误') || userMessage.includes('服务器发生内部错误')) {
+        userMessage = '服务器暂时不可用，请稍后重试';
+      } else if (userMessage.includes('UNAUTHORIZED') || userMessage.includes('姓名或学号不正确')) {
+        userMessage = '姓名或学号不正确，请检查输入';
+      } else if (userMessage.includes('String should have at least 1 character')) {
+        userMessage = '用户名和学号不能为空';
+      } else if (userMessage.includes('请求错误，请检查网络连接')) {
+        userMessage = '网络连接错误，请检查代理配置';
+      }
+      message.error(userMessage);
     } finally {
       setLoginLoading(false);
     }

@@ -1,5 +1,5 @@
-# 使用Node.js镜像（使用本地已下载的AMD64架构镜像）
-FROM node:20-alpine
+# 使用本地Node.js镜像（避免网络访问）
+FROM node@sha256:09e2b3d9726018aecf269bd35325f46bf75046a643a66d28360ec71132750ec8
 
 # 设置工作目录
 WORKDIR /app
