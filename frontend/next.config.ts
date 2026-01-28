@@ -27,8 +27,9 @@ const nextConfig: NextConfig = {
   },
   // 配置API代理 - 使用环境变量
   async rewrites() {
-    // 优先使用内部API地址（用于容器间通信），如果未定义则使用外部地址
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL_INTERNAL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    // 强制使用容器内部地址，确保生产环境稳定
+    const apiUrl = 'http://backend:8000';
+    console.log('API Proxy URL (hardcoded):', apiUrl);
     
     return [
       {

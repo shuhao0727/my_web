@@ -1,6 +1,6 @@
 """
-MyWeb项目数据库初始化脚本
-初始化XBK数据库（学校课程管理系统）和ZNT数据库（AI智能体系统）
+简化版数据库初始化脚本
+明确在backend根目录下创建两个数据库：backend/xbk.db 和 backend/znt.db
 """
 import os
 import sqlite3
@@ -8,7 +8,7 @@ import logging
 from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from config.database import AiBase, ai_engine
+from config.database import AiBase, ai_engine, XBK_DB_PATH, ZNT_DB_PATH, get_absolute_db_path
 from models.ai_models import AiUser, AiAgent
 
 # 配置日志
@@ -23,9 +23,9 @@ class DatabaseInitializer:
     """数据库初始化器"""
     
     def __init__(self):
-        # 从环境变量获取数据库路径，默认为backend目录下
-        self.xbk_db_path = os.getenv("XBK_DB_PATH", "backend/xbk.db")
-        self.znt_db_path = os.getenv("ZNT_DB_PATH", "backend/znt.db")
+        # 固定数据库路径（从config.database导入）
+        self.xbk_db_path = XBK_DB_PATH
+        self.znt_db_path = ZNT_DB_PATH
         
         # 管理员账户配置
         self.admin_config = {
@@ -35,18 +35,20 @@ class DatabaseInitializer:
             "wangshu_password": os.getenv("WANGSHU_PASSWORD", "wangshu123")
         }
         
-        logger.info(f"数据库初始化器已创建")
+        logger.info("数据库初始化器已创建")
         logger.info(f"XBK数据库路径: {self.xbk_db_path}")
         logger.info(f"ZNT数据库路径: {self.znt_db_path}")
     
     def init_xbk_database(self):
         """初始化XBK数据库（学校课程管理系统）"""
-        logger.info(f"开始初始化XBK数据库: {self.xbk_db_path}")
+        # 使用绝对路径
+        xbk_abs_path = get_absolute_db_path(self.xbk_db_path)
+        logger.info(f"开始初始化XBK数据库: {xbk_abs_path}")
         
         # 确保目录存在
-        Path(self.xbk_db_path).parent.mkdir(parents=True, exist_ok=True)
+        Path(xbk_abs_path).parent.mkdir(parents=True, exist_ok=True)
         
-        conn = sqlite3.connect(self.xbk_db_path)
+        conn = sqlite3.connect(xbk_abs_path)
         cursor = conn.cursor()
         
         try:
@@ -132,8 +134,6 @@ class DatabaseInitializer:
                     username TEXT UNIQUE NOT NULL,
                     password_hash TEXT NOT NULL,
                     role TEXT DEFAULT 'admin',
-                    email TEXT,
-                    phone TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     last_login TIMESTAMP,
                     is_active BOOLEAN DEFAULT 1
@@ -182,21 +182,19 @@ class DatabaseInitializer:
                 ("admin", "wangshu0727")
             )
             
-            # 插入默认管理员账户
+            # 插入默认管理员账户（注意：移除了email字段）
             cursor.execute(
-                "INSERT OR IGNORE INTO admins (username, password_hash, role, email) VALUES (?, ?, ?, ?)",
+                "INSERT OR IGNORE INTO admins (username, password_hash, role) VALUES (?, ?, ?)",
                 (self.admin_config["admin_username"], 
                  self.admin_config["admin_password"], 
-                 "super_admin",
-                 "admin@myweb.com")
+                 "super_admin")
             )
             
             cursor.execute(
-                "INSERT OR IGNORE INTO admins (username, password_hash, role, email) VALUES (?, ?, ?, ?)",
+                "INSERT OR IGNORE INTO admins (username, password_hash, role) VALUES (?, ?, ?)",
                 (self.admin_config["wangshu_username"], 
                  self.admin_config["wangshu_password"], 
-                 "admin",
-                 "wangshu0727@myweb.com")
+                 "admin")
             )
             
             # 创建索引
@@ -244,15 +242,17 @@ class DatabaseInitializer:
     
     def init_znt_database(self):
         """初始化ZNT数据库（AI智能体系统）"""
-        logger.info(f"开始初始化ZNT数据库: {self.znt_db_path}")
+        # 使用绝对路径
+        znt_abs_path = get_absolute_db_path(self.znt_db_path)
+        logger.info(f"开始初始化ZNT数据库: {znt_abs_path}")
         
         try:
             # 确保目录存在
-            Path(self.znt_db_path).parent.mkdir(parents=True, exist_ok=True)
+            Path(znt_abs_path).parent.mkdir(parents=True, exist_ok=True)
             
             # 创建数据库引擎
             engine = create_engine(
-                f"sqlite:///{self.znt_db_path}",
+                f"sqlite:///{znt_abs_path}",
                 connect_args={"check_same_thread": False}
             )
             
@@ -361,8 +361,9 @@ class DatabaseInitializer:
         
         try:
             # 验证XBK数据库
-            if Path(self.xbk_db_path).exists():
-                conn_xbk = sqlite3.connect(self.xbk_db_path)
+            xbk_abs_path = get_absolute_db_path(self.xbk_db_path)
+            if Path(xbk_abs_path).exists():
+                conn_xbk = sqlite3.connect(xbk_abs_path)
                 cursor_xbk = conn_xbk.cursor()
                 cursor_xbk.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
                 xbk_tables = [table[0] for table in cursor_xbk.fetchall()]
@@ -394,9 +395,10 @@ class DatabaseInitializer:
         
         try:
             # 验证ZNT数据库
-            if Path(self.znt_db_path).exists():
+            znt_abs_path = get_absolute_db_path(self.znt_db_path)
+            if Path(znt_abs_path).exists():
                 from sqlalchemy import create_engine, inspect
-                engine = create_engine(f"sqlite:///{self.znt_db_path}")
+                engine = create_engine(f"sqlite:///{znt_abs_path}")
                 inspector = inspect(engine)
                 znt_tables = inspector.get_table_names()
                 engine.dispose()
@@ -443,17 +445,19 @@ class DatabaseInitializer:
         
         try:
             # 备份XBK数据库
-            if Path(self.xbk_db_path).exists():
+            xbk_abs_path = get_absolute_db_path(self.xbk_db_path)
+            if Path(xbk_abs_path).exists():
                 xbk_backup_path = Path(backup_dir) / f"xbk_db_backup_{timestamp}.db"
-                shutil.copy2(self.xbk_db_path, xbk_backup_path)
+                shutil.copy2(xbk_abs_path, xbk_backup_path)
                 logger.info(f"✅ XBK数据库备份完成: {xbk_backup_path}")
             else:
                 logger.warning("⚠️ XBK数据库文件不存在，跳过备份")
             
             # 备份ZNT数据库
-            if Path(self.znt_db_path).exists():
+            znt_abs_path = get_absolute_db_path(self.znt_db_path)
+            if Path(znt_abs_path).exists():
                 znt_backup_path = Path(backup_dir) / f"znt_db_backup_{timestamp}.db"
-                shutil.copy2(self.znt_db_path, znt_backup_path)
+                shutil.copy2(znt_abs_path, znt_backup_path)
                 logger.info(f"✅ ZNT数据库备份完成: {znt_backup_path}")
             else:
                 logger.warning("⚠️ ZNT数据库文件不存在，跳过备份")

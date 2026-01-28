@@ -1,21 +1,26 @@
 """
 XBK数据库连接和工具函数
+使用统一的绝对路径获取函数确保数据库位置正确
 """
 import sqlite3
 import os
 from typing import Dict, Any, Tuple
+from config.database import XBK_DB_PATH, get_absolute_db_path
 
 
 def get_db():
     """获取XBK数据库连接"""
-    # 从环境变量获取数据库路径，默认为backend/xbk.db
-    db_path = os.getenv("XBK_DATABASE_URL", "/Users/wsh/Desktop/my_web/backend/xbk.db")
-    # 处理sqlite:///前缀
-    if db_path.startswith("sqlite:///"):
-        db_path = db_path.replace("sqlite:///", "")
-    elif db_path.startswith("sqlite://"):
-        db_path = db_path.replace("sqlite://", "")
-    conn = sqlite3.connect(db_path)
+    # 使用统一的路径配置
+    db_path = XBK_DB_PATH  # "backend/xbk.db"
+    
+    # 获取绝对路径
+    absolute_db_path = get_absolute_db_path(db_path)
+    
+    # 确保目录存在
+    from pathlib import Path
+    Path(absolute_db_path).parent.mkdir(parents=True, exist_ok=True)
+    
+    conn = sqlite3.connect(absolute_db_path)
     conn.row_factory = sqlite3.Row  # 返回字典格式的结果
     return conn
 

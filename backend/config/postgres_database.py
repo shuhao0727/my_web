@@ -91,6 +91,26 @@ def create_fallback_engine(url: str, engine_name: str = "SQLite"):
     
     logger.warning(f"⚠️  使用SQLite回退引擎: {engine_name}")
     
+    # 如果是SQLite URL，转换为绝对路径
+    if url.startswith("sqlite:///"):
+        db_path = url.replace("sqlite:///", "")
+        # 使用统一的绝对路径函数
+        try:
+            from config.database import get_absolute_db_path
+            abs_path = get_absolute_db_path(db_path)
+        except ImportError:
+            # 回退方案：从当前工作目录计算
+            from pathlib import Path
+            project_root = Path.cwd()
+            abs_path = str(project_root / db_path)
+        
+        # 确保目录存在
+        from pathlib import Path
+        Path(abs_path).parent.mkdir(parents=True, exist_ok=True)
+        
+        url = f"sqlite:///{abs_path}"
+        logger.info(f"🔧 SQLite数据库路径: {abs_path}")
+    
     engine = create_engine(
         url,
         connect_args={"check_same_thread": False},
@@ -128,15 +148,29 @@ if USE_POSTGRESQL:
         logger.info("✅ 使用PostgreSQL作为主数据库")
     except Exception as e:
         logger.error(f"❌ PostgreSQL连接失败，回退到SQLite: {e}")
-        # 回退到SQLite
-        DEFAULT_DATABASE_URL = "sqlite:///./xbk.db"
-        AI_DATABASE_URL = "sqlite:///./znt.db"
+        # 回退到SQLite，使用统一的路径配置
+        try:
+            from config.database import XBK_DB_PATH, ZNT_DB_PATH
+            DEFAULT_DATABASE_URL = f"sqlite:///{XBK_DB_PATH}"
+            AI_DATABASE_URL = f"sqlite:///{ZNT_DB_PATH}"
+        except ImportError:
+            # 回退方案
+            DEFAULT_DATABASE_URL = "sqlite:///backend/xbk.db"
+            AI_DATABASE_URL = "sqlite:///backend/znt.db"
+        
         default_engine = create_fallback_engine(DEFAULT_DATABASE_URL, "默认SQLite")
         ai_engine = create_fallback_engine(AI_DATABASE_URL, "AI智能体SQLite")
 else:
-    # 直接使用SQLite
-    DEFAULT_DATABASE_URL = "sqlite:///./xbk.db"
-    AI_DATABASE_URL = "sqlite:///./znt.db"
+    # 直接使用SQLite，使用统一的路径配置
+    try:
+        from config.database import XBK_DB_PATH, ZNT_DB_PATH
+        DEFAULT_DATABASE_URL = f"sqlite:///{XBK_DB_PATH}"
+        AI_DATABASE_URL = f"sqlite:///{ZNT_DB_PATH}"
+    except ImportError:
+        # 回退方案
+        DEFAULT_DATABASE_URL = "sqlite:///backend/xbk.db"
+        AI_DATABASE_URL = "sqlite:///backend/znt.db"
+    
     default_engine = create_fallback_engine(DEFAULT_DATABASE_URL, "默认SQLite")
     ai_engine = create_fallback_engine(AI_DATABASE_URL, "AI智能体SQLite")
 
@@ -244,7 +278,7 @@ def optimize_database_performance():
                     conn.execute(text(index_sql))
                     logger.debug(f"✅ 创建索引: {index_sql}")
                 except Exception as e:
-                    logger.warning(f"⚠️  创建索引失败 {index_sql}: {e}")
+                    logger.debug(f"⚠️  创建索引失败（可能表不存在）{index_sql}: {e}")
             
             # 更新统计信息（PostgreSQL）
             if USE_POSTGRESQL:

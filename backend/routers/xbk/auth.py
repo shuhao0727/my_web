@@ -90,6 +90,9 @@ async def get_current_user(
     
     student_id = payload.get("student_id")
     name = payload.get("name")
+    user_type = payload.get("user_type", "student")
+    class_name = payload.get("class_name")
+    
     if student_id is None or name is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -97,15 +100,24 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"}
         )
     
-    # 获取数据库连接
+    # 如果是管理员用户，直接返回（不需要查询student_info表）
+    if user_type == "admin":
+        return UserInfo(
+            name=name,
+            student_id=student_id,
+            class_name=class_name,
+            user_type=user_type
+        )
+    
+    # 学生用户需要验证student_info表
     db = get_xbk_db()
     try:
         cursor = db.cursor()
         
         # 获取当前系统配置的年份和年级
-        cursor.execute("SELECT value FROM system_config WHERE key='current_year'")
+        cursor.execute("SELECT config_value FROM system_config WHERE config_key='current_year'")
         current_year_row = cursor.fetchone()
-        cursor.execute("SELECT value FROM system_config WHERE key='current_grade'")
+        cursor.execute("SELECT config_value FROM system_config WHERE config_key='current_grade'")
         current_grade_row = cursor.fetchone()
         
         current_year = current_year_row[0] if current_year_row else None
@@ -135,7 +147,8 @@ async def get_current_user(
         return UserInfo(
             name=student[1],
             student_id=student[0],
-            class_name=student[2] if len(student) > 2 else None
+            class_name=student[2] if len(student) > 2 else None,
+            user_type="student"
         )
     finally:
         db.close()
@@ -164,9 +177,9 @@ async def login(request: LoginRequest):
             else:
                 # 2. 如果不是管理员，检查学生信息表
                 # 获取当前系统配置的年份和年级
-                cursor.execute("SELECT value FROM system_config WHERE key='current_year'")
+                cursor.execute("SELECT config_value FROM system_config WHERE config_key='current_year'")
                 current_year_row = cursor.fetchone()
-                cursor.execute("SELECT value FROM system_config WHERE key='current_grade'")
+                cursor.execute("SELECT config_value FROM system_config WHERE config_key='current_grade'")
                 current_grade_row = cursor.fetchone()
                 
                 current_year = current_year_row[0] if current_year_row else None

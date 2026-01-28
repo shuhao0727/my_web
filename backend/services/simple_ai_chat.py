@@ -29,6 +29,23 @@ except ImportError as e:
     print("请确保在backend目录下运行此脚本")
     sys.exit(1)
 
+def get_default_db_path() -> str:
+    """
+    获取默认数据库路径，使用统一的get_absolute_db_path函数
+    如果导入失败，则回退到默认路径
+    """
+    try:
+        from config.database import ZNT_DB_PATH, get_absolute_db_path
+        return get_absolute_db_path(ZNT_DB_PATH)
+    except ImportError:
+        # 回退方案：使用相对于当前文件的路径
+        script_dir = os.path.dirname(__file__)
+        default_path = os.path.join(script_dir, "..", "znt.db")
+        return os.path.abspath(default_path)
+    except Exception:
+        # 其他异常，返回默认路径
+        return "backend/znt.db"
+
 def check_network() -> bool:
     """检查网络连接"""
     import socket
@@ -592,7 +609,7 @@ async def main():
     parser.add_argument("--user_id", type=int, help="用户ID (可选)")
     parser.add_argument("--message", type=str, help="要发送的消息")
     parser.add_argument("--list", action="store_true", help="列出所有智能体")
-    parser.add_argument("--db", type=str, default="znt.db", help="数据库文件路径 (默认: znt.db)")
+    parser.add_argument("--db", type=str, default=get_default_db_path(), help="数据库文件路径")
     
     args = parser.parse_args()
     

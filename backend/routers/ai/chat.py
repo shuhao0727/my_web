@@ -113,8 +113,9 @@ async def chat(
     
     try:
         # 调用simple_ai_chat模块中的chat_with_agent_id函数
-        # 数据库路径：znt.db 位于backend目录下
-        db_path = os.path.join(os.path.dirname(__file__), "../../znt.db")
+        # 使用统一的数据库路径配置
+        from config.database import ZNT_DB_PATH, get_absolute_db_path
+        db_path = get_absolute_db_path(ZNT_DB_PATH)
         ai_response = await chat_with_agent_id(db_path, agent_id, message, user_id)
         
         # 记录API调用

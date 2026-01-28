@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import sqlite3
 import os
+from config.database import XBK_DB_PATH, get_absolute_db_path
 
 xbk_router = APIRouter(tags=["xbk"])
 
@@ -21,8 +22,9 @@ class LoginResponse(BaseModel):
 # 数据库连接函数
 def get_db():
     """获取XBK数据库连接"""
-    db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "xbk.db")
-    conn = sqlite3.connect(db_path)
+    db_path = XBK_DB_PATH  # "backend/xbk.db"
+    absolute_db_path = get_absolute_db_path(db_path)
+    conn = sqlite3.connect(absolute_db_path)
     conn.row_factory = sqlite3.Row  # 返回字典格式的结果
     return conn
 

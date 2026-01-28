@@ -15,8 +15,10 @@ services:
       - DEBUG=true
       - LOG_LEVEL=DEBUG
       - CONTENT_DIR=/app/content
-      - DATABASE_URL=sqlite:///./xbk.db?check_same_thread=False
-      - AI_DATABASE_URL=sqlite:///./znt.db?check_same_thread=False
+      - DATABASE_URL=sqlite:////app/xbk.db?check_same_thread=False
+      - AI_DATABASE_URL=sqlite:////app/znt.db?check_same_thread=False
+      - XBK_DATABASE_URL=sqlite:////app/xbk.db?check_same_thread=False
+      - USE_POSTGRESQL=false
     volumes:
       - ./backend/content:/app/content
       - ./backend/xbk.db:/app/xbk.db
@@ -37,16 +39,15 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    image: my_web-frontend
     container_name: myweb-frontend
     restart: unless-stopped
     ports:
       - "6608:6608"
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_API_URL_INTERNAL=http://backend:8000
       - NODE_ENV=production
-    volumes:
-      - ./frontend/public:/app/public
-      - ./frontend/logs:/app/logs
     depends_on:
       - backend
     networks:

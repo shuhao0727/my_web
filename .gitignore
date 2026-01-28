@@ -108,3 +108,7 @@ docker-compose.override.yml
 *.db-shm
 *.db-wal
 *.db-*
+
+# Project specific temporary files
+frontend/frontend.pid
+backend/typst.tar.xz
