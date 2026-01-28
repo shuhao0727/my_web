@@ -69,6 +69,8 @@ services:
     restart: unless-stopped
     expose:
       - "6608"
+    ports:
+      - "6608:6608"
     environment:
       - NEXT_PUBLIC_API_URL=http://nginx/api
       - NODE_ENV=production
