@@ -1,5 +1,5 @@
-# 使用本地Python 3.11 Alpine镜像（避免网络访问）
-FROM python@sha256:71ab7a182d44e2bef6e3fb3513c301b2f4b6c7bcf358a7c878a237b256804df5
+# 使用Python 3.11 Alpine镜像
+FROM python:3.11-alpine
 
 # 设置构建参数，用于传递代理设置
 ARG HTTP_PROXY

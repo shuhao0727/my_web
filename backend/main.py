@@ -40,23 +40,6 @@ import os
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
-    # 预启动检查 - 确保数据库和目录结构就绪
-    try:
-        from pre_startup import PreStartupInitializer
-        print("🔍 执行预启动检查...")
-        initializer = PreStartupInitializer()
-        success = initializer.run_initialization()
-        if success:
-            print("✅ 预启动检查完成，系统准备就绪")
-        else:
-            print("⚠️  预启动检查发现问题，系统可能无法正常工作")
-    except ImportError as e:
-        print(f"⚠️  导入预启动模块失败: {e}")
-        print("ℹ️  跳过预启动检查，继续启动应用")
-    except Exception as e:
-        print(f"❌ 预启动检查过程异常: {e}")
-        print("ℹ️  跳过预启动检查，继续启动应用")
-    
     # 启动阶段
     print("🚀 启动后端服务...")
     

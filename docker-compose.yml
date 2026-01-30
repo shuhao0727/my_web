@@ -1,25 +1,25 @@
 # ========================================
-# MyWeb - 基础Docker Compose配置文件
-# 默认开发环境配置，使用.env文件中的环境变量
+# MyWeb - 开发友好的生产模式配置文件
+# 支持前端热重载 + nginx生产架构
+# 通过环境变量切换模式：
+#   - 开发模式：FRONTEND_MODE=development
+#   - 生产模式：FRONTEND_MODE=production (默认)
 # 用法：docker-compose up -d
 # ========================================
 
-version: '3.8'
-
 services:
-  # 后端服务
+  # 后端服务 - 使用现有的AMD64镜像
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: myweb-backend:amd64
     container_name: ${BACKEND_CONTAINER_NAME:-myweb-backend}
     restart: unless-stopped
+    # 生产环境不暴露端口到主机，仅nginx可访问
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     environment:
-      - ENVIRONMENT=${ENVIRONMENT:-development}
-      - DEBUG=${DEBUG:-true}
-      - LOG_LEVEL=${LOG_LEVEL:-DEBUG}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - DEBUG=${DEBUG:-false}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - CONTENT_DIR=/backend/content
       - DATABASE_URL=sqlite:////backend/xbk.db?check_same_thread=False
       - AI_DATABASE_URL=sqlite:////backend/znt.db?check_same_thread=False
@@ -56,26 +56,64 @@ services:
       retries: 3
       start_period: 40s
 
-  # 前端服务
+  # 前端服务 - 使用修复后的AMD64镜像
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: myweb-frontend:amd64
     container_name: ${FRONTEND_CONTAINER_NAME:-myweb-frontend}
     restart: unless-stopped
+    # 生产环境不暴露端口到主机，仅nginx可访问
     ports:
       - "${FRONTEND_PORT:-6608}:6608"
     environment:
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
-      - NODE_ENV=${NODE_ENV:-development}
+      # 运行时API地址（主要用于next.config.ts逻辑判断）
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://backend:8000}
+      - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-http://backend:8000}
+      - NODE_ENV=${NODE_ENV:-production}
       - PORT=6608
-      - HOST=0.0.0.0
+      - USE_NGINX=true  # 标记使用nginx模式
+      - FRONTEND_MODE=${FRONTEND_MODE:-production}  # 新增：开发/生产模式切换
+      # 代理配置清理 - 设置为空值避免影响容器内部通信
+      - http_proxy=
+      - https_proxy=
+      - HTTP_PROXY=
+      - HTTPS_PROXY=
+      - no_proxy=localhost,127.0.0.1,0.0.0.0,backend,172.20.0.0/16,10.0.0.0/8,192.168.0.0/16
+      - NO_PROXY=localhost,127.0.0.1,0.0.0.0,backend,172.20.0.0/16,10.0.0.0/8,192.168.0.0/16
+    volumes:
+      # 仅在开发模式下挂载源码，生产模式使用虚拟映射
+      - ${FRONTEND_SOURCE_VOLUME:-/tmp/empty:/tmp/empty:ro}  # 动态挂载控制
     depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - myweb-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:6608/favicon.ico"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Nginx反向代理服务（生产环境推荐）
+  nginx:
+    build:
+      context: ./deploy/nginx
+      dockerfile: Dockerfile
+    container_name: ${NGINX_CONTAINER_NAME:-myweb-nginx}
+    restart: unless-stopped
+    ports:
+      - "${NGINX_HTTP_PORT:-80}:80"
+      - "${NGINX_HTTPS_PORT:-443}:443"
+    volumes:
+      # 动态nginx配置文件：开发环境用dev.conf，生产环境用普通conf
+      - ${NGINX_CONFIG_VOLUME:-./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro}
+    depends_on:
+      - frontend
       - backend
     networks:
       - myweb-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6608"]
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -85,3 +123,11 @@ services:
 networks:
   myweb-network:
     driver: bridge
+
+# 卷配置（用于数据持久化）
+volumes:
+  typst-content:
+  xbk-database:
+  znt-database:
+  backend-logs:
+  frontend-logs:

@@ -1,0 +1,46 @@
+# 简单的AMD64后端镜像测试
+FROM python:3.11-alpine
+
+WORKDIR /app
+
+# 设置代理环境变量（构建时从参数传入）
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ENV http_proxy=${HTTP_PROXY}
+ENV https_proxy=${HTTPS_PROXY}
+ENV HTTP_PROXY=${HTTP_PROXY}
+ENV HTTPS_PROXY=${HTTPS_PROXY}
+
+# 配置Alpine国内镜像源
+RUN mkdir -p /etc/apk/conf.d/ && \
+    echo "https://mirrors.ustc.edu.cn/alpine/v3.19/main" > /etc/apk/repositories && \
+    echo "https://mirrors.ustc.edu.cn/alpine/v3.19/community" >> /etc/apk/repositories && \
+    rm -rf /etc/apk/conf.d/proxy.conf 2>/dev/null || true && \
+    echo 'http_proxy=' > /etc/apk/conf.d/no-proxy.conf && \
+    echo 'https_proxy=' >> /etc/apk/conf.d/no-proxy.conf && \
+    unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY
+
+# 安装基本依赖
+RUN unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY && \
+    apk update && apk add --no-cache \
+    curl \
+    && rm -rf /var/cache/apk/*
+
+# 配置pip国内镜像源
+RUN python -m pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple && \
+    python -m pip config set global.trusted-host pypi.tuna.tsinghua.edu.cn && \
+    python -m pip config unset global.proxy 2>/dev/null || true
+
+# 复制依赖文件
+COPY requirements.txt .
+
+# 测试安装依赖
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# 复制应用代码
+COPY . .
+
+# 运行应用
+EXPOSE 8000
+CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
