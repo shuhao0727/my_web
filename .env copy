@@ -1,0 +1,143 @@
+# ========================================
+# MyWeb - 统一环境变量配置文件
+# 支持开发和生产环境一键切换
+# 用法：注释/取消注释对应配置块来切换环境
+# ========================================
+
+# ⚡⚡⚡ 环境切换 ⚡⚡⚡
+# 方法：注释掉当前环境的配置，取消注释另一个环境的配置
+# ==============================================
+
+# 🔧【开发环境配置】- 前端热重载 + nginx架构
+# ==============================================
+# ENVIRONMENT=development
+# DEBUG=true
+# LOG_LEVEL=DEBUG
+# NODE_ENV=development
+# FRONTEND_MODE=development
+# ENABLE_NGINX=true
+
+# 开发模式特有配置
+# FRONTEND_SOURCE_VOLUME=./frontend:/app
+# NGINX_WEBSOCKET_VOLUME=./deploy/nginx/nginx.dev.conf:/etc/nginx/nginx.conf
+
+# 🔧【生产环境配置】- 优化性能 + 安全
+# ==============================================
+ENVIRONMENT=production
+DEBUG=false
+LOG_LEVEL=INFO
+NODE_ENV=production
+FRONTEND_MODE=production
+ENABLE_NGINX=true
+
+# 生产模式特有配置
+FRONTEND_SOURCE_VOLUME=
+NGINX_WEBSOCKET_VOLUME=
+
+# ==============================================
+# 📦 通用配置（两种环境都适用）
+# ==============================================
+
+# [服务配置] =====================================
+BACKEND_CONTAINER_NAME=myweb-backend
+FRONTEND_CONTAINER_NAME=myweb-frontend
+NGINX_CONTAINER_NAME=myweb-nginx
+
+# 端口配置
+BACKEND_PORT=8000
+FRONTEND_PORT=6608
+NGINX_HTTP_PORT=80
+NGINX_HTTPS_PORT=8443
+
+# [数据库配置] ===================================
+DATABASE_URL=sqlite:////backend/xbk.db?check_same_thread=False
+AI_DATABASE_URL=sqlite:////backend/znt.db?check_same_thread=False
+XBK_DATABASE_URL=sqlite:////backend/xbk.db?check_same_thread=False
+USE_POSTGRESQL=false
+
+# [安全配置] ====================================
+SECRET_KEY=your-secret-key-change-in-production-至少32位随机字符串
+# 开发环境CORS（宽松）
+CORS_ORIGINS=http://localhost:6608,http://localhost:8000,http://localhost
+# 生产环境CORS（严格）
+# CORS_ORIGINS=http://localhost,http://localhost:80,http://localhost:443
+
+# JWT配置
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# [管理员账户] ==================================
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=admin123
+WANGSHU_USERNAME=wangshu0727
+WANGSHU_PASSWORD=wangshu123
+
+# [GitHub同步配置] ==============================
+GITHUB_ACCESS_TOKEN=${GITHUB_ACCESS_TOKEN:-}
+GITHUB_REPO_OWNER=shuhao0727
+GITHUB_REPO_NAME=2-My-notes
+GITHUB_REPO_BRANCH=main
+SYNC_INTERVAL_SECONDS=86400
+ENABLE_AUTO_SYNC=true
+
+# [AI服务配置] ==================================
+DIFY_API_KEY=
+DIFY_APP_ID=
+DEEPSEEK_API_KEY=
+
+# [网络配置] ====================================
+NETWORK_SUBNET=172.20.0.0/16
+
+# [性能配置] ===================================
+# 开发环境优化
+WORKERS_PER_CORE=1
+WEB_CONCURRENCY=2
+MAX_WORKERS=4
+# 生产环境优化
+# WORKERS_PER_CORE=2
+# WEB_CONCURRENCY=4
+# MAX_WORKERS=8
+
+# [前端配置] ====================================
+# API地址配置 - 根据模式动态设置
+# 开发模式：使用Next.js代理，直接访问后端
+# 生产模式：为空，依赖nginx代理
+# NEXT_PUBLIC_API_URL=http://localhost:8000
+PORT=6608
+HOST=0.0.0.0
+
+# 生产环境API地址（注释掉，生产时设为空）
+NEXT_PUBLIC_API_URL=
+
+# [内容目录配置] ================================
+CONTENT_DIR=./backend/content
+
+# [构建模式配置] =================================
+# 构建模式：local=本地构建, remote=远程镜像拉取
+# 注意：当前docker-compose.yml固定使用本地构建，此变量为未来服务器部署预留
+BUILD_MODE=local
+
+# Docker Hub配置（为未来远程镜像部署预留）
+# 当前未使用，保留用于服务器部署场景
+DOCKER_HUB_USERNAME=shuhao07
+BACKEND_IMAGE_TAG=latest
+FRONTEND_IMAGE_TAG=latest
+
+# [数据持久化配置] ===============================
+# 数据持久化模式：local=本地挂载, docker=Docker卷
+# 注意：当前固定使用本地挂载，此变量为未来高级部署预留
+DATA_PERSISTENCE_MODE=local
+
+# ==============================================
+# 📋 使用说明
+# ==============================================
+# 1. 【开发环境】：取消注释"开发环境配置"部分，注释"生产环境配置"部分
+# 2. 【生产环境】：取消注释"生产环境配置"部分，注释"开发环境配置"部分
+# 3. 启动命令：docker-compose up -d （无需指定env文件）
+# 4. 切换环境：修改本文件后重启：docker-compose down && docker-compose up -d
+# 
+# 注意事项：
+# - 生产环境必须修改：SECRET_KEY、ADMIN_PASSWORD、WANGSHU_PASSWORD
+# - 开发环境使用宽松CORS便于调试
+# - 生产环境使用严格CORS确保安全
+# ==============================================
