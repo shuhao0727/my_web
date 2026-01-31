@@ -1,103 +1,62 @@
-# 服务器部署配置 - 使用预先构建的Docker镜像
-# 部署步骤：
-# 1. 镜像已推送到 Docker Hub (shuhao07/my_web-backend:latest, shuhao07/my_web-frontend:latest)
-# 2. 配置环境变量（创建.env文件或设置系统环境变量）
-# 3. 部署: docker-compose -f docker-compose.server.yml up -d
-# 
-# 环境变量配置示例:
-# DOCKER_REGISTRY=shuhao07
-# IMAGE_TAG=latest
-# DOMAIN_NAME=your-domain.com
-# XBK_JWT_SECRET_KEY=your-secure-secret-key
+# MyWeb 一键部署配置 - amd64架构
+# 使用已发布的AMD64架构Docker镜像
+# 镜像: shuhao07/my_web-backend:latest-amd64, shuhao07/my_web-frontend:latest-amd64
+# 部署命令: docker-compose -f docker-compose-deploy-simple.yml up -d
+
+version: '3.8'
 
 services:
-  # 后端服务
+  # 后端API服务
   backend:
-    image: ${DOCKER_REGISTRY:-my_web}-backend:${IMAGE_TAG:-latest}
-    container_name: myweb_backend_prod
-    # 仅暴露内部端口，通过Nginx代理访问
-    expose:
-      - "8000"
+    image: shuhao07/my_web-backend:latest-amd64
+    container_name: myweb_backend
+    ports:
+      - "8000:8000"
     environment:
-      # 应用配置
+      # 基本配置
       - APP_ENV=production
-      - APP_DEBUG=false
       - BACKEND_HOST=0.0.0.0
       - BACKEND_PORT=8000
-      - LOG_LEVEL=INFO
-      - LOG_FILE=backend.log
       
       # 数据库配置
       - DATABASE_URL=sqlite:///data/xbk.db
       - AI_DATABASE_URL=sqlite:///data/znt.db
-      - XBK_DATABASE_URL=sqlite:///data/xbk.db
       - XBK_DB_PATH=/data/xbk.db
       - ZNT_DB_PATH=/data/znt.db
-      - DB_POOL_SIZE=20
-      - DB_POOL_OVERFLOW=10
-      - DB_ECHO=false
       
-      # 内容目录配置
-      - CONTENT_DIR=/data/content
-      - GITHUB_REPO_NAME=2-My-notes
+      # JWT密钥（必须配置）
+      - XBK_JWT_SECRET_KEY=${XBK_JWT_SECRET_KEY:-change-this-in-production}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-this-in-production}
       
-      # 安全认证配置
-      - XBK_JWT_SECRET_KEY=${XBK_JWT_SECRET_KEY:-xbk-secret-key-change-in-production}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-your-secret-key-change-in-production}
+      # 用户账户
       - ADMIN_USERNAME=admin
       - ADMIN_PASSWORD=admin123
       - WANGSHU_USERNAME=wangshu0727
       - WANGSHU_PASSWORD=wangshu123
       
-      # GitHub同步配置
-      - GITHUB_ACCESS_TOKEN=${GITHUB_ACCESS_TOKEN:-}
-      - GITHUB_OWNER=${GITHUB_OWNER:-}
+      # 内容目录
+      - CONTENT_DIR=/data/content
       
-      # AI服务配置
-      - DIFY_API_KEY=${DIFY_API_KEY:-}
-      - DIFY_APP_ID=${DIFY_APP_ID:-}
-      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
-      
-      # 同步配置
-      - ENABLE_AUTO_SYNC=${ENABLE_AUTO_SYNC:-false}
-      - SYNC_INTERVAL_SECONDS=${SYNC_INTERVAL_SECONDS:-3600}
-      
-      # CORS跨域配置
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:6608,*}
+      # CORS配置
+      - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:6608,*
     volumes:
       - backend_data:/data
-      - backend_logs:/app/logs
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
-    # 资源限制
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-        reservations:
-          memory: 256M
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
 
-  # 前端服务
+  # 前端Web服务
   frontend:
-    image: ${DOCKER_REGISTRY:-my_web}-frontend:${IMAGE_TAG:-latest}
-    container_name: myweb_frontend_prod
-    expose:
-      - "3000"
+    image: shuhao07/my_web-frontend:latest-amd64
+    container_name: myweb_frontend
+    ports:
+      - "6608:3000"  # 主机端口6608映射到容器端口3000
     environment:
       - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=http://backend:8000
-      - NEXT_PUBLIC_API_URL_INTERNAL=http://backend:8000
-      - NEXT_PUBLIC_BASE_PATH=${NEXT_PUBLIC_BASE_PATH:-/}
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
       - PORT=3000
     restart: unless-stopped
     depends_on:
@@ -107,61 +66,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
-    # 资源限制
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-        reservations:
-          memory: 256M
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
 
-  # Nginx反向代理（HTTP）
-  nginx:
-    image: nginx:alpine
-    container_name: myweb_nginx_prod
-    ports:
-      - "80:80"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - nginx_logs:/var/log/nginx
-    restart: unless-stopped
-    depends_on:
-      - frontend
-      - backend
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  # Certbot SSL证书自动更新（可选，需要域名和SSL_EMAIL环境变量）
-  # certbot:
-  #   image: certbot/certbot
-  #   container_name: myweb_certbot
-  #   volumes:
-  #     - certbot_etc:/etc/letsencrypt
-  #     - certbot_var:/var/lib/letsencrypt
-  #     - nginx_html:/var/www/certbot
-  #   command: certonly --webroot -w /var/www/certbot --force-renewal --email ${SSL_EMAIL} -d ${DOMAIN_NAME} --agree-tos
-  #   restart: unless-stopped
-
-# 数据卷定义
 volumes:
   backend_data:
-    driver: local
-  backend_logs:
-    driver: local
-  nginx_logs:
-    driver: local
-  # certbot_etc:
-  #   driver: local
-  # certbot_var:
-  #   driver: local
-  # nginx_html:
-  #   driver: local
