@@ -1,0 +1,134 @@
+# 服务器部署配置 - 使用预先构建的Docker镜像
+
+# 环境变量配置（在部署时通过.env文件或环境变量设置）
+# DOCKER_REGISTRY=docker.io/yourusername
+# IMAGE_TAG=latest
+# DOMAIN_NAME=your-domain.com
+# SSL_EMAIL=your-email@example.com
+
+services:
+  # 后端服务
+  backend:
+    image: ${DOCKER_REGISTRY:-my_web}-backend:${IMAGE_TAG:-latest}
+    container_name: myweb_backend_prod
+    # 仅暴露内部端口，通过Nginx代理访问
+    expose:
+      - "8000"
+    environment:
+      - APP_ENV=production
+      - BACKEND_HOST=0.0.0.0
+      - BACKEND_PORT=8000
+      - DATABASE_URL=sqlite:///data/xbk.db
+      - AI_DATABASE_URL=sqlite:///data/znt.db
+      - CONTENT_DIR=/data/content
+      - LOG_LEVEL=INFO
+      - DB_POOL_SIZE=20
+      - DB_POOL_OVERFLOW=10
+      - DB_ECHO=false
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000,http://localhost,http://${DOMAIN_NAME:-localhost},https://${DOMAIN_NAME:-localhost}}
+      # 安全配置
+      - XBK_JWT_SECRET_KEY=${XBK_JWT_SECRET_KEY:-change-this-in-production}
+      - GITHUB_ACCESS_TOKEN=${GITHUB_ACCESS_TOKEN:-}
+      - ENABLE_AUTO_SYNC=${ENABLE_AUTO_SYNC:-false}
+      - SYNC_INTERVAL_SECONDS=${SYNC_INTERVAL_SECONDS:-3600}
+    volumes:
+      - backend_data:/data
+      - backend_logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # 前端服务
+  frontend:
+    image: ${DOCKER_REGISTRY:-my_web}-frontend:${IMAGE_TAG:-latest}
+    container_name: myweb_frontend_prod
+    expose:
+      - "3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://backend:8000
+      - NEXT_PUBLIC_API_URL_INTERNAL=http://backend:8000
+      - NEXT_PUBLIC_BASE_PATH=${NEXT_PUBLIC_BASE_PATH:-/}
+      - PORT=3000
+    restart: unless-stopped
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Nginx反向代理（HTTP）
+  nginx:
+    image: nginx:alpine
+    container_name: myweb_nginx_prod
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - nginx_logs:/var/log/nginx
+    restart: unless-stopped
+    depends_on:
+      - frontend
+      - backend
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Certbot SSL证书自动更新（可选，需要域名和SSL_EMAIL环境变量）
+  # certbot:
+  #   image: certbot/certbot
+  #   container_name: myweb_certbot
+  #   volumes:
+  #     - certbot_etc:/etc/letsencrypt
+  #     - certbot_var:/var/lib/letsencrypt
+  #     - nginx_html:/var/www/certbot
+  #   command: certonly --webroot -w /var/www/certbot --force-renewal --email ${SSL_EMAIL} -d ${DOMAIN_NAME} --agree-tos
+  #   restart: unless-stopped
+
+# 数据卷定义
+volumes:
+  backend_data:
+    driver: local
+  backend_logs:
+    driver: local
+  nginx_logs:
+    driver: local
+  # certbot_etc:
+  #   driver: local
+  # certbot_var:
+  #   driver: local
+  # nginx_html:
+  #   driver: local
