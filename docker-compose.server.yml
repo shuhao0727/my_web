@@ -18,15 +18,15 @@ services:
       - BACKEND_HOST=0.0.0.0
       - BACKEND_PORT=8000
       
-      # 数据库配置
-      - DATABASE_URL=sqlite:///data/xbk.db
-      - AI_DATABASE_URL=sqlite:///data/znt.db
-      - XBK_DB_PATH=/data/xbk.db
-      - ZNT_DB_PATH=/data/znt.db
+      # 数据库配置 - 根目录
+      - DATABASE_URL=sqlite:///xbk.db
+      - AI_DATABASE_URL=sqlite:///znt.db
+      - XBK_DB_PATH=/xbk.db
+      - ZNT_DB_PATH=/znt.db
       
-      # JWT密钥（必须配置）
-      - XBK_JWT_SECRET_KEY=${XBK_JWT_SECRET_KEY:-change-this-in-production}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-this-in-production}
+      # JWT密钥
+      - XBK_JWT_SECRET_KEY=myweb-xbk-secret-key
+      - JWT_SECRET_KEY=myweb-jwt-secret-key
       
       # 用户账户
       - ADMIN_USERNAME=admin
@@ -35,12 +35,12 @@ services:
       - WANGSHU_PASSWORD=wangshu123
       
       # 内容目录
-      - CONTENT_DIR=/data/content
+      - CONTENT_DIR=/content
       
       # CORS配置
       - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:6608,*
     volumes:
-      - backend_data:/data
+      - ./backend:/app
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -66,6 +66,3 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-
-volumes:
-  backend_data:
