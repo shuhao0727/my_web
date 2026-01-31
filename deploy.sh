@@ -141,7 +141,7 @@ start_dev() {
     cd ..
 
     log_success "开发模式启动完成"
-    echo "前端: http://localhost:3000"
+    echo "前端: http://localhost:6608"
     echo "后端: http://localhost:8000"
 
     # 等待进程
@@ -246,7 +246,7 @@ start_docker() {
     if [ -f "docker-compose.yml" ]; then
         docker-compose up -d --build
         log_success "Docker 容器启动完成"
-        echo "前端: http://localhost:3000"
+        echo "前端: http://localhost:6608"
         echo "后端: http://localhost:8000"
     else
         log_error "docker-compose.yml 不存在"
@@ -266,7 +266,7 @@ start_docker_optimized() {
     if [ -f "docker-compose.yml" ]; then
         docker-compose up -d --build --force-recreate
         log_success "Docker 容器 (X86_64优化) 启动完成"
-        echo "前端: http://localhost:3000"
+        echo "前端: http://localhost:6608"
         echo "后端: http://localhost:8000"
     else
         log_error "docker-compose.yml 不存在"
@@ -286,7 +286,7 @@ start_docker_prod() {
     if [ -f "docker-compose.prod.yml" ]; then
         docker-compose -f docker-compose.prod.yml up -d --build
         log_success "生产环境 Docker 容器启动完成"
-        echo "前端: http://localhost:3000"
+        echo "前端: http://localhost:6608"
         echo "后端: http://localhost:8000"
     else
         log_error "docker-compose.prod.yml 不存在"

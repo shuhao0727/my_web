@@ -1,10 +1,14 @@
 # 服务器部署配置 - 使用预先构建的Docker镜像
-
-# 环境变量配置（在部署时通过.env文件或环境变量设置）
-# DOCKER_REGISTRY=docker.io/yourusername
+# 部署步骤：
+# 1. 镜像已推送到 Docker Hub (shuhao07/my_web-backend:latest, shuhao07/my_web-frontend:latest)
+# 2. 配置环境变量（创建.env文件或设置系统环境变量）
+# 3. 部署: docker-compose -f docker-compose.server.yml up -d
+# 
+# 环境变量配置示例:
+# DOCKER_REGISTRY=shuhao07
 # IMAGE_TAG=latest
 # DOMAIN_NAME=your-domain.com
-# SSL_EMAIL=your-email@example.com
+# XBK_JWT_SECRET_KEY=your-secure-secret-key
 
 services:
   # 后端服务
@@ -15,22 +19,51 @@ services:
     expose:
       - "8000"
     environment:
+      # 应用配置
       - APP_ENV=production
+      - APP_DEBUG=false
       - BACKEND_HOST=0.0.0.0
       - BACKEND_PORT=8000
+      - LOG_LEVEL=INFO
+      - LOG_FILE=backend.log
+      
+      # 数据库配置
       - DATABASE_URL=sqlite:///data/xbk.db
       - AI_DATABASE_URL=sqlite:///data/znt.db
-      - CONTENT_DIR=/data/content
-      - LOG_LEVEL=INFO
+      - XBK_DATABASE_URL=sqlite:///data/xbk.db
+      - XBK_DB_PATH=/data/xbk.db
+      - ZNT_DB_PATH=/data/znt.db
       - DB_POOL_SIZE=20
       - DB_POOL_OVERFLOW=10
       - DB_ECHO=false
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000,http://localhost,http://${DOMAIN_NAME:-localhost},https://${DOMAIN_NAME:-localhost}}
-      # 安全配置
-      - XBK_JWT_SECRET_KEY=${XBK_JWT_SECRET_KEY:-change-this-in-production}
+      
+      # 内容目录配置
+      - CONTENT_DIR=/data/content
+      - GITHUB_REPO_NAME=2-My-notes
+      
+      # 安全认证配置
+      - XBK_JWT_SECRET_KEY=${XBK_JWT_SECRET_KEY:-xbk-secret-key-change-in-production}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-your-secret-key-change-in-production}
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=admin123
+      - WANGSHU_USERNAME=wangshu0727
+      - WANGSHU_PASSWORD=wangshu123
+      
+      # GitHub同步配置
       - GITHUB_ACCESS_TOKEN=${GITHUB_ACCESS_TOKEN:-}
+      - GITHUB_OWNER=${GITHUB_OWNER:-}
+      
+      # AI服务配置
+      - DIFY_API_KEY=${DIFY_API_KEY:-}
+      - DIFY_APP_ID=${DIFY_APP_ID:-}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      
+      # 同步配置
       - ENABLE_AUTO_SYNC=${ENABLE_AUTO_SYNC:-false}
       - SYNC_INTERVAL_SECONDS=${SYNC_INTERVAL_SECONDS:-3600}
+      
+      # CORS跨域配置
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:6608,*}
     volumes:
       - backend_data:/data
       - backend_logs:/app/logs
@@ -70,7 +103,7 @@ services:
     depends_on:
       - backend
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
