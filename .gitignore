@@ -53,6 +53,9 @@ yarn-error.log*
 .next/**
 *.log
 
+# Typst
+.typst-cache/
+
 # Database
 *.db
 *.db-journal

@@ -11,19 +11,24 @@ sys.path.insert(0, backend_dir)
 # 在导入其他模块之前加载环境变量
 from dotenv import load_dotenv
 import logging
+from config.database import test_connections
 
 env_path = os.path.join(os.path.dirname(__file__), '.env')
 if os.path.exists(env_path):
-    load_dotenv(env_path)
+    load_dotenv(env_path, override=True)
     print(f"✅ 环境变量已加载: {env_path}")
-    print(f"   CONTENT_DIR={os.getenv('CONTENT_DIR')}")
-    print(f"   GITHUB_ACCESS_TOKEN exists: {bool(os.getenv('GITHUB_ACCESS_TOKEN'))}")
 else:
-    print(f"⚠️  环境变量文件不存在: {env_path}")
+    print(f"⚠️  环境变量文件不存在: {env_path}，使用默认配置")
+    # 设置默认环境变量
+    os.environ.setdefault('CONTENT_DIR', './content')
+    os.environ.setdefault('BACKEND_HOST', '0.0.0.0')
+    os.environ.setdefault('BACKEND_PORT', '8000')
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 
 @asynccontextmanager
@@ -32,19 +37,36 @@ async def lifespan(app: FastAPI):
     # 启动阶段
     print("🚀 启动后端服务...")
     
-    # 环境变量已经在模块级别加载，这里只打印其他配置
-    print(f"   SYNC_INTERVAL_SECONDS={os.getenv('SYNC_INTERVAL_SECONDS')}")
-    print(f"   ENABLE_AUTO_SYNC={os.getenv('ENABLE_AUTO_SYNC')}")
+    # 检查环境变量
+    content_dir = os.getenv("CONTENT_DIR", "./content")
+    sync_interval = os.getenv("SYNC_INTERVAL_SECONDS")
+    enable_auto_sync = os.getenv("ENABLE_AUTO_SYNC")
+    
+    print(f"   CONTENT_DIR={content_dir}")
+    print(f"   SYNC_INTERVAL_SECONDS={sync_interval}")
+    print(f"   ENABLE_AUTO_SYNC={enable_auto_sync}")
+    print(f"   GITHUB_ACCESS_TOKEN exists: {bool(os.getenv('GITHUB_ACCESS_TOKEN'))}")
     
     # 配置日志
+    log_level = os.getenv("LOG_LEVEL", "INFO")
+    log_file = os.getenv("LOG_FILE", "backend.log")
+    
     logging.basicConfig(
-        level=logging.INFO,
+        level=getattr(logging, log_level.upper()),
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[
             logging.StreamHandler(),
-            logging.FileHandler("backend.log")
+            logging.FileHandler(log_file)
         ]
     )
+    
+    # 测试数据库连接
+    try:
+        test_connections()
+        print("✅ 数据库连接正常")
+    except Exception as e:
+        print(f"❌ 数据库连接测试失败: {e}")
+        raise
     
     # 启动自动同步调度器（临时禁用以避免启动阻塞）
     # try:
@@ -56,6 +78,10 @@ async def lifespan(app: FastAPI):
     # except Exception as e:
     #     print(f"❌ 启动自动同步调度器失败: {e}")
     print("⚠️  仓库自动同步调度器已临时禁用（避免网络连接阻塞）")
+    
+    # 检查内容目录
+    os.makedirs(content_dir, exist_ok=True)
+    print(f"✅ 内容目录已准备: {content_dir}")
     
     yield
     
@@ -76,46 +102,52 @@ app = FastAPI(
     description="个人网站后端API服务",
     version="1.0.0",
     lifespan=lifespan,
+    debug=os.getenv("APP_DEBUG", "false").lower() == "true",
 )
 
+# 全局异常处理
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc):
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors()}
+    )
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request, exc):
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"}
+    )
+
 # 配置CORS
-origins = [
-    "http://localhost:3000",
-    "http://localhost:6608",
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:6608",
-    "*",  # 临时允许所有来源用于调试
-]
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:6608,*").split(",")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 临时允许所有来源
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # 暴露头部信息
+    expose_headers=["Access-Control-Allow-Origin", "Access-Control-Allow-Credentials"],
 )
 
 # 注册静态文件服务
-# 1. 静态PDF缓存目录
+# 1. 静态内容目录
 content_dir = os.getenv("CONTENT_DIR", "./content")
-if os.path.exists(content_dir):
-    app.mount("/content", StaticFiles(directory=content_dir), name="content")
-    print(f"✅ 静态文件服务已挂载: /content -> {content_dir}")
-else:
-    print(f"⚠️  内容目录不存在: {content_dir}")
-    # 尝试创建目录
-    try:
-        os.makedirs(content_dir, exist_ok=True)
-        print(f"✅ 已创建内容目录: {content_dir}")
-    except Exception as e:
-        print(f"❌ 创建内容目录失败: {e}")
+os.makedirs(content_dir, exist_ok=True)
+
+app.mount("/content", StaticFiles(directory=content_dir), name="content")
+print(f"✅ 静态文件服务已挂载: /content -> {content_dir}")
 
 # 新增仓库同步路由
 try:
     from routers.repo_sync import router as repo_sync_router
     app.include_router(repo_sync_router)
-except ImportError:
-    print("⚠️  仓库同步路由导入失败，请检查repo_sync.py文件")
+    print("✅ 仓库同步路由已加载")
+except ImportError as e:
+    print(f"⚠️  仓库同步路由导入失败: {e}")
 
 # 新增AI智能体路由（模块化版本）
 try:
@@ -167,18 +199,30 @@ async def root():
         "status": "running",
         "docs": "/docs",
         "static_files": "/content",
+        "environment": os.getenv("APP_ENV", "development"),
+        "content_dir": os.getenv("CONTENT_DIR", "./content"),
     }
 
 @app.get("/health")
 async def health_check():
     """健康检查端点"""
-    return {"status": "healthy"}
+    return {
+        "status": "healthy",
+        "environment": os.getenv("APP_ENV", "development"),
+        "database_status": "connected" if test_connections() is None else "disconnected"
+    }
 
 if __name__ == "__main__":
     import uvicorn
+    host = os.getenv("BACKEND_HOST", "0.0.0.0")
+    port = int(os.getenv("BACKEND_PORT", "8000"))
+    reload = os.getenv("APP_DEBUG", "false").lower() == "true"
+    
+    print(f"🚀 启动服务: {host}:{port} (debug={reload})")
     uvicorn.run(
         app,
-        host="0.0.0.0",
-        port=8000,
-        reload=False,
+        host=host,
+        port=port,
+        reload=reload,
+        log_level=os.getenv("LOG_LEVEL", "info").lower(),
     )

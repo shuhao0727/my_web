@@ -171,7 +171,8 @@ const StudentManagement: React.FC<StudentManagementProps> = ({
   const handleDownloadTemplate = () => {
     try {
       const link = document.createElement('a');
-      link.href = 'http://localhost:8000/api/ai/user-management/users/export-template';
+      // 使用相对路径，由Next.js代理重写
+      link.href = '/api/ai/user-management/users/export-template';
       link.target = '_blank';
       // 不指定download属性，让浏览器根据后端响应头处理文件名
       document.body.appendChild(link);

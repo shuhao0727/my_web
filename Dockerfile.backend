@@ -1,0 +1,93 @@
+# 后端服务 Dockerfile - 按照前端方法优化版本（多阶段构建 + 依赖ID + 本地缓存支持）
+FROM python:3.11-slim AS builder
+
+# 构建参数
+ARG BUILD_DATE
+ARG VCS_REF
+
+# 设置工作目录
+WORKDIR /app
+
+# 配置APT使用国内镜像源（检查文件是否存在）
+RUN test -f /etc/apt/sources.list && sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list; \
+    test -f /etc/apt/sources.list.d/debian.sources && sed -i 's/security.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources || true
+
+# 安装系统依赖（独立的缓存层）
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    curl \
+    wget \
+    ca-certificates \
+    dumb-init \
+    xz-utils \
+    && rm -rf /var/lib/apt/lists/*
+
+# 安装Typst - 支持本地缓存或网络下载
+COPY .typst-cache/typst /tmp/typst-cache/typst
+RUN if [ -f /tmp/typst-cache/typst ]; then \
+        echo "使用本地Typst缓存" && \
+        chmod +x /tmp/typst-cache/typst && \
+        mv /tmp/typst-cache/typst /usr/local/bin/typst; \
+    else \
+        echo "从网络下载Typst" && \
+        curl -fsSL https://ghproxy.com/https://github.com/typst/typst/releases/download/v0.14.0/typst-0.14.0-linux-x86_64-musl.tar.xz -o typst.tar.xz && \
+        tar -xf typst.tar.xz && \
+        mv typst-0.14.0-linux-x86_64-musl/typst /usr/local/bin/ && \
+        rm -rf typst-0.14.0-linux-x86_64-musl.tar.xz typst-0.14.0-linux-x86_64-musl; \
+    fi
+
+# 配置pip使用国内镜像源
+ENV PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple/
+ENV PIP_TRUSTED_HOST=pypi.tuna.tsinghua.edu.cn
+
+# 复制依赖文件并安装Python依赖（利用Docker缓存层）
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 创建依赖ID文件，记录确切的依赖版本和哈希（仿照前端方法）
+RUN pip freeze > /tmp/requirements-frozen.txt && \
+    echo "BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)" > /tmp/build-info.txt && \
+    echo "DEPENDENCY_HASH=$(sha256sum /tmp/requirements-frozen.txt | cut -d' ' -f1)" >> /tmp/build-info.txt
+
+# 运行阶段（使用相同的Debian镜像）
+FROM python:3.11-slim AS runner
+
+WORKDIR /app
+
+# 安装系统依赖（包含dumb-init）
+RUN test -f /etc/apt/sources.list && sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list; \
+    test -f /etc/apt/sources.list.d/debian.sources && sed -i 's/security.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources; \
+    apt-get update && apt-get install -y \
+    dumb-init \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# 配置pip使用国内镜像源（用于运行时可能需要的额外依赖）
+ENV PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple/
+ENV PIP_TRUSTED_HOST=pypi.tuna.tsinghua.edu.cn
+
+# 从构建阶段复制Python依赖和构建产物
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# 复制Typst二进制文件
+COPY --from=builder /usr/local/bin/typst /usr/local/bin/typst
+
+# 复制后端源代码
+COPY backend/ .
+
+# 复制构建信息文件
+COPY --from=builder /tmp/requirements-frozen.txt ./requirements-frozen.txt
+COPY --from=builder /tmp/build-info.txt ./build-info.txt
+
+# 生成最终的依赖哈希文件（仿照前端方法）
+RUN cat build-info.txt && \
+    echo "FINAL_DEPENDENCY_HASH=$(sha256sum requirements-frozen.txt | cut -d' ' -f1)" > /app/dependency-hash.txt
+
+# 暴露端口
+EXPOSE 8000
+
+# 安全启动应用（使用dumb-init，仿照前端方法）
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["sh", "-c", "echo 'Backend dependency hash: $(cat dependency-hash.txt)' && python main.py"]

@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // 禁用开发指示器
   devIndicators: false,
-  // 启用外部目录支持
+  // 仅启用必要的实验性功能
   experimental: {
     externalDir: true,
   },
