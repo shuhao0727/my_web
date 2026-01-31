@@ -13,7 +13,7 @@ const Footer: React.FC = () => {
         快速链接: [
             { label: '首页', href: '/' },
             { label: '关于我们', href: '/about' },
-            { label: '博客文章', href: '/blog' },
+            { label: '博客文章', href: '/articles' },
             { label: 'AI智能体', href: '/ai-chat' },
             { label: '个人程序', href: '/personal-programs' },
         ],

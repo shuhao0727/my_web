@@ -107,8 +107,9 @@ export default function SchoolCourseProcessPage() {
   }
 
   return (
-    <div className={styles.container}>
-      <Card className={styles.filterCard}>
+    <div className="max-w-7xl mx-auto p-6">
+      
+      <Card className="mb-6 shadow-sm">
         <FilterPanel
           filters={filters}
           setFilters={setFilters}
@@ -119,8 +120,8 @@ export default function SchoolCourseProcessPage() {
         />
       </Card>
 
-      <Row gutter={[16, 16]} className={styles.actionsRow}>
-        <Col>
+      <div className="mb-6">
+        <Space wrap>
           <Button
             type="primary"
             icon={<UploadOutlined />}
@@ -128,24 +129,18 @@ export default function SchoolCourseProcessPage() {
           >
             导入数据
           </Button>
-        </Col>
-        <Col>
           <Button
             icon={<DownloadOutlined />}
             onClick={() => setExportModalVisible(true)}
           >
             导出数据
           </Button>
-        </Col>
-        <Col>
           <Button
             icon={<BarChartOutlined />}
             onClick={() => setAnalysisVisible(true)}
           >
             数据分析
           </Button>
-        </Col>
-        <Col>
           <Button
             icon={<DeleteOutlined />}
             danger
@@ -153,8 +148,6 @@ export default function SchoolCourseProcessPage() {
           >
             删除数据
           </Button>
-        </Col>
-        <Col>
           <Button
             icon={<ReloadOutlined />}
             onClick={refreshData}
@@ -162,10 +155,10 @@ export default function SchoolCourseProcessPage() {
           >
             刷新数据
           </Button>
-        </Col>
-      </Row>
+        </Space>
+      </div>
 
-      <Card className={styles.dataCard}>
+      <Card className="shadow-sm">
         <DataTable 
           data={data} 
           loading={dataLoading} 

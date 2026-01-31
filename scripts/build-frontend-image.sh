@@ -50,24 +50,28 @@ check_tools() {
 generate_dependency_id() {
     log_info "生成前端依赖ID..."
     
-    cd frontend
+    # 使用绝对路径或回到项目根目录
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+    
+    cd "$PROJECT_ROOT/frontend"
     if [ -f "package-lock.json" ]; then
         # 基于package-lock.json生成依赖ID
         DEPENDENCY_ID=$(sha256sum package-lock.json | cut -d' ' -f1)
-        echo $DEPENDENCY_ID > ../frontend-dependency-id.txt
+        echo $DEPENDENCY_ID > "$PROJECT_ROOT/frontend-dependency-id.txt"
         log_info "依赖ID: $DEPENDENCY_ID"
     elif [ -f "yarn.lock" ]; then
         # 如果使用yarn
         DEPENDENCY_ID=$(sha256sum yarn.lock | cut -d' ' -f1)
-        echo $DEPENDENCY_ID > ../frontend-dependency-id.txt
+        echo $DEPENDENCY_ID > "$PROJECT_ROOT/frontend-dependency-id.txt"
         log_info "依赖ID: $DEPENDENCY_ID"
     else
         # 如果只有package.json
         DEPENDENCY_ID=$(sha256sum package.json | cut -d' ' -f1 | head -c 12)
-        echo $DEPENDENCY_ID > ../frontend-dependency-id.txt
+        echo $DEPENDENCY_ID > "$PROJECT_ROOT/frontend-dependency-id.txt"
         log_info "依赖ID: $DEPENDENCY_ID"
     fi
-    cd ..
+    cd "$PROJECT_ROOT"
 }
 
 # 构建前端镜像
@@ -81,8 +85,20 @@ build_frontend_image() {
         TAG="latest"
     fi
     
+    # 检查是否有架构参数
+    ARCH=""
+    if [ "$2" = "amd64" ]; then
+        ARCH="--platform linux/amd64"
+        log_info "构建 AMD64 架构镜像"
+    elif [ "$2" = "arm64" ]; then
+        ARCH="--platform linux/arm64"
+        log_info "构建 ARM64 架构镜像"
+    else
+        log_info "构建当前平台架构镜像"
+    fi
+    
     # 构建镜像
-    docker build -f Dockerfile.frontend \
+    docker build $ARCH -f Dockerfile.frontend \
         -t myweb-frontend:${TAG} \
         -t myweb-frontend:latest \
         --build-arg BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
@@ -180,7 +196,7 @@ main() {
         build)
             check_tools
             generate_dependency_id
-            build_frontend_image
+            build_frontend_image $@
             ;;
         push)
             check_tools

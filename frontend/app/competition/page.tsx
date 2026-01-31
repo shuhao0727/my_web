@@ -211,41 +211,39 @@ export default function CompetitionPage() {
     <Layout className="min-h-screen bg-white overflow-x-hidden">
       {/* 同步状态栏 */}
       <div className="bg-gray-50 border-b border-gray-200 px-4 py-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center">
-              <div className={`w-2 h-2 rounded-full mr-2 ${
-                syncStatus === 'idle' ? 'bg-gray-400' :
-                syncStatus === 'syncing' ? 'bg-yellow-500 animate-pulse' :
-                syncStatus === 'success' ? 'bg-green-500' : 'bg-red-500'
-              }`} />
-              <Text className="text-sm text-gray-600">
-                {syncStatus === 'idle' ? '就绪' :
-                 syncStatus === 'syncing' ? '同步中...' :
-                 syncStatus === 'success' ? '同步成功' : '同步失败'}
-              </Text>
+          <div className="flex items-center justify-between px-4 py-2">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <div className={`w-2 h-2 rounded-full ${
+                  syncStatus === 'idle' ? 'bg-gray-400' :
+                  syncStatus === 'syncing' ? 'bg-yellow-500 animate-pulse' :
+                  syncStatus === 'success' ? 'bg-green-500' : 'bg-red-500'
+                }`} />
+                <Text className="text-sm text-gray-600">
+                  {syncStatus === 'syncing' ? '同步中...' : '就绪'}
+                </Text>
+              </div>
+              {lastSyncTime && (
+                <Text className="text-xs text-gray-500">
+                  {lastSyncTime}
+                </Text>
+              )}
             </div>
-            {lastSyncTime && (
-              <Text className="text-sm text-gray-500">
-                最后同步: {lastSyncTime}
-              </Text>
-            )}
+            <Space>
+              <button
+                onClick={handleManualSync}
+                className={`px-3 py-1 rounded text-sm flex items-center ${
+                  syncStatus === 'syncing' 
+                    ? 'bg-gray-200 text-gray-500 cursor-not-allowed' 
+                    : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
+                }`}
+                disabled={syncStatus === 'syncing'}
+              >
+                <ReloadOutlined className={`mr-1 ${syncStatus === 'syncing' ? 'animate-spin' : ''}`} />
+                同步
+              </button>
+            </Space>
           </div>
-          <Space>
-            <button
-              onClick={handleManualSync}
-              className={`px-3 py-1 rounded text-sm flex items-center ${
-                syncStatus === 'syncing' 
-                  ? 'bg-gray-200 text-gray-500 cursor-not-allowed' 
-                  : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
-              }`}
-              disabled={syncStatus === 'syncing'}
-            >
-              <ReloadOutlined className={`mr-1 ${syncStatus === 'syncing' ? 'animate-spin' : ''}`} />
-              {syncStatus === 'syncing' ? '同步中...' : '立即同步'}
-            </button>
-          </Space>
-        </div>
       </div>
 
       <div className="w-full bg-gray-50 overflow-x-hidden flex justify-center px-12">

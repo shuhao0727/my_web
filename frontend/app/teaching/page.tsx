@@ -35,22 +35,37 @@ const courses = [
 
 export default function TeachingPage() {
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-4xl mx-auto p-4">
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-6xl mx-auto p-6">
+        <div className="mb-8">
+          <Title level={2} className="text-center mb-2">信息技术教学</Title>
+          <Paragraph className="text-center text-gray-600 mb-0">
+            专业的信息技术课程与教学资源
+          </Paragraph>
+        </div>
+        
         {/* 课程列表 */}
-        <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {courses.map(course => (
-            <Card key={course.id} className="hover:shadow-md transition-shadow">
-              <Title level={4} className="mb-3">{course.title}</Title>
-              <Paragraph className="text-gray-600 mb-4">
-                {course.description}
-              </Paragraph>
-              <div className="flex flex-wrap gap-2">
-                {course.tags.map(tag => (
-                  <span key={tag} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
-                    {tag}
-                  </span>
-                ))}
+            <Card 
+              key={course.id} 
+              className="hover:shadow-lg transition-all duration-300 cursor-pointer border border-gray-200 hover:border-blue-200"
+            >
+              <div className="space-y-3">
+                <Title level={4} className="mb-0 text-gray-800">{course.title}</Title>
+                <Paragraph className="text-gray-600 mb-0">
+                  {course.description}
+                </Paragraph>
+                <div className="flex flex-wrap gap-2 pt-2">
+                  {course.tags.map(tag => (
+                    <span 
+                      key={tag} 
+                      className="px-3 py-1 bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 text-sm rounded-full border border-blue-100"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
               </div>
             </Card>
           ))}

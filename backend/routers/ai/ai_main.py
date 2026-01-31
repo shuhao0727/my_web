@@ -39,3 +39,20 @@ async def ai_root():
         },
         "status": "active"
     }
+
+@router.get("/health")
+async def ai_health():
+    """AI模块健康检查"""
+    return {
+        "status": "healthy",
+        "module": "AI智能体",
+        "version": "1.0.0",
+        "endpoints": {
+            "auth": "/api/ai/auth/*",
+            "agents": "/api/ai/agents/*",
+            "conversations": "/api/ai/conversations/*",
+            "chat": "/api/ai/chat/*",
+            "user-management": "/api/ai/user-management/*",
+            "data": "/api/ai/data/*",
+        }
+    }

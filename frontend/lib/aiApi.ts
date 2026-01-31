@@ -2,7 +2,7 @@
  * AI智能体API客户端
  * 注意：后端路由前缀为 /api/ai，各个子路由有自己的前缀
  */
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || '/api';
 
 // 请求封装
 async function request<T>(
@@ -54,7 +54,7 @@ export const userApi = {
   // 用户登录 - 不抛出错误，返回包含错误信息的对象
   login: async (username: string, studentId?: string) => {
     try {
-      const response = await request<any>('/api/ai/auth/login', {
+      const response = await request<any>('/ai/auth/login', {
         method: 'POST',
         body: JSON.stringify({ username, student_id: studentId }),
       });
@@ -85,7 +85,7 @@ export const userApi = {
         return { success: false, user: null, message: '未登录' };
       }
       
-      const response = await request<{ success: boolean; user: any }>('/api/ai/auth/me', {
+      const response = await request<{ success: boolean; user: any }>('/ai/auth/me', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -103,7 +103,7 @@ export const userApi = {
 
   // 获取用户列表（测试用）
   getUsers: () => 
-    request<{ success: boolean; users: any[]; total: number }>('/api/ai/auth/users'),
+    request<{ success: boolean; users: any[]; total: number }>('/ai/auth/users'),
 };
 
 // 用户管理API（管理员）
@@ -116,7 +116,7 @@ export const userManagementApi = {
     role?: string,
     isActive?: boolean
   ) => {
-    let url = `/api/ai/user-management/users?page=${page}&page_size=${pageSize}`;
+    let url = `/ai/user-management/users?page=${page}&page_size=${pageSize}`;
     if (search) url += `&search=${encodeURIComponent(search)}`;
     if (role) url += `&role=${encodeURIComponent(role)}`;
     if (isActive !== undefined) url += `&is_active=${isActive}`;
@@ -137,7 +137,7 @@ export const userManagementApi = {
     class_name?: string;
     is_active?: boolean;
   }) => 
-    request<{ success: boolean; user: any; message: string }>('/api/ai/user-management/users', {
+    request<{ success: boolean; user: any; message: string }>('/ai/user-management/users', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
@@ -150,14 +150,14 @@ export const userManagementApi = {
     role?: string;
     is_active?: boolean;
   }) => 
-    request<{ success: boolean; user: any; message: string }>(`/api/ai/user-management/users/${userId}`, {
+    request<{ success: boolean; user: any; message: string }>(`/ai/user-management/users/${userId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
 
   // 删除用户
   deleteUser: (userId: number) => 
-    request<{ success: boolean; message: string }>(`/api/ai/user-management/users/${userId}`, {
+    request<{ success: boolean; message: string }>(`/ai/user-management/users/${userId}`, {
       method: 'DELETE',
     }),
 
@@ -170,7 +170,7 @@ export const userManagementApi = {
       imported_count: number;
       skipped_count: number;
       errors: string[];
-    }>('/api/ai/user-management/users/import', {
+    }>('/ai/user-management/users/import', {
       method: 'POST',
       body: formData,
     });
@@ -178,14 +178,14 @@ export const userManagementApi = {
 
   // 导出Excel模板
   exportTemplate: () => 
-    request<{ success: boolean; filename: string; content: string }>('/api/ai/user-management/users/export-template'),
+    request<{ success: boolean; filename: string; content: string }>('/ai/user-management/users/export-template'),
 };
 
 // AI智能体API
 export const aiAgentApi = {
   // 获取所有智能体
   getAgents: (activeOnly = false, search?: string, apiType?: string) => {
-    let url = `/api/ai/agents?active_only=${activeOnly}`;
+    let url = `/ai/agents?active_only=${activeOnly}`;
     if (search) url += `&search=${encodeURIComponent(search)}`;
     if (apiType) url += `&api_type=${encodeURIComponent(apiType)}`;
     return request<{ success: boolean; agents: any[]; total: number }>(url);
@@ -193,7 +193,7 @@ export const aiAgentApi = {
 
   // 获取单个智能体详情
   getAgent: (agentId: number) => 
-    request<{ success: boolean; agent: any }>(`/api/ai/agents/${agentId}`),
+    request<{ success: boolean; agent: any }>(`/ai/agents/${agentId}`),
 
   // 创建智能体（管理员）
   createAgent: (data: {
@@ -205,7 +205,7 @@ export const aiAgentApi = {
     app_id?: string;
     is_active?: boolean;
   }) => 
-    request<{ success: boolean; agent: any; message: string }>('/api/ai/agents', {
+    request<{ success: boolean; agent: any; message: string }>('/ai/agents', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
@@ -223,31 +223,31 @@ export const aiAgentApi = {
       is_active?: boolean;
     }
   ) => 
-    request<{ success: boolean; agent: any; message: string }>(`/api/ai/agents/${agentId}`, {
+    request<{ success: boolean; agent: any; message: string }>(`/ai/agents/${agentId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
 
   // 更新智能体状态
   updateAgentStatus: (agentId: number, isActive: boolean) =>
-    request<{ success: boolean; agent: any; message: string }>(`/api/ai/agents/${agentId}/status`, {
+    request<{ success: boolean; agent: any; message: string }>(`/ai/agents/${agentId}/status`, {
       method: 'PUT',
       body: JSON.stringify({ is_active: isActive }),
     }),
 
   // 删除智能体（管理员）
   deleteAgent: (agentId: number) => 
-    request<{ success: boolean; message: string }>(`/api/ai/agents/${agentId}`, {
+    request<{ success: boolean; message: string }>(`/ai/agents/${agentId}`, {
       method: 'DELETE',
     }),
 
   // 获取智能体类型
   getAgentTypes: () =>
-    request<{ success: boolean; types: string[] }>('/api/ai/agents/types'),
+    request<{ success: boolean; types: string[] }>('/ai/agents/types'),
 
   // 获取智能体统计摘要
   getAgentsSummary: () =>
-    request<{ success: boolean; summary: any }>('/api/ai/agents/stats/summary'),
+    request<{ success: boolean; summary: any }>('/ai/agents/stats/summary'),
 
   // 测试智能体连接
   testAgentConnection: (agentId: number) =>
@@ -256,7 +256,7 @@ export const aiAgentApi = {
       message: string;
       test_result?: any;
       agent: { id: number; name: string; api_type: string };
-    }>(`/api/ai/agents/${agentId}/test-connection`, {
+    }>(`/ai/agents/${agentId}/test-connection`, {
       method: 'POST',
     }),
 };
@@ -265,7 +265,7 @@ export const aiAgentApi = {
 export const conversationApi = {
   // 获取用户对话列表
   getConversations: (userId?: number, agentId?: number, limit = 20, offset = 0, includeMessages = false) => {
-    let url = `/api/ai/conversations?limit=${limit}&offset=${offset}&include_messages=${includeMessages}`;
+    let url = `/ai/conversations?limit=${limit}&offset=${offset}&include_messages=${includeMessages}`;
     if (userId) url += `&user_id=${userId}`;
     if (agentId) url += `&agent_id=${agentId}`;
     return request<{ success: boolean; conversations: any[]; total: number; limit: number; offset: number }>(url);
@@ -273,7 +273,7 @@ export const conversationApi = {
 
   // 创建新对话
   createConversation: (userId: number, agentId: number, title?: string) => 
-    request<{ success: boolean; conversation: any; message: string }>('/api/ai/conversations', {
+    request<{ success: boolean; conversation: any; message: string }>('/ai/conversations', {
       method: 'POST',
       body: JSON.stringify({ user_id: userId, agent_id: agentId, title }),
     }),
@@ -281,32 +281,32 @@ export const conversationApi = {
   // 获取对话详情
   getConversation: (conversationId: number, includeMessages = true) => 
     request<{ success: boolean; conversation: any }>(
-      `/api/ai/conversations/${conversationId}?include_messages=${includeMessages}`
+      `/ai/conversations/${conversationId}?include_messages=${includeMessages}`
     ),
 
   // 更新对话
   updateConversation: (conversationId: number, data: { title?: string; end_time?: string; total_messages?: number; total_tokens?: number }) =>
-    request<{ success: boolean; conversation: any; message: string }>(`/api/ai/conversations/${conversationId}`, {
+    request<{ success: boolean; conversation: any; message: string }>(`/ai/conversations/${conversationId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
 
   // 删除对话
   deleteConversation: (conversationId: number) => 
-    request<{ success: boolean; message: string }>(`/api/ai/conversations/${conversationId}`, {
+    request<{ success: boolean; message: string }>(`/ai/conversations/${conversationId}`, {
       method: 'DELETE',
     }),
 
   // 获取用户对话统计摘要
   getUserConversationSummary: (userId: number) =>
-    request<{ success: boolean; summary: any }>(`/api/ai/conversations/user/${userId}/summary`),
+    request<{ success: boolean; summary: any }>(`/ai/conversations/user/${userId}/summary`),
 };
 
 // 消息API
 export const messageApi = {
   // 获取消息列表
   getMessages: (conversationId?: number, role?: string, limit = 50, offset = 0) => {
-    let url = `/api/ai/messages?limit=${limit}&offset=${offset}`;
+    let url = `/ai/messages?limit=${limit}&offset=${offset}`;
     if (conversationId) url += `&conversation_id=${conversationId}`;
     if (role) url += `&role=${role}`;
     return request<{ success: boolean; messages: any[]; total: number; limit: number; offset: number }>(url);
@@ -314,27 +314,27 @@ export const messageApi = {
 
   // 创建消息
   createMessage: (conversationId: number, role: 'user' | 'assistant', content: string, tokens?: number) => 
-    request<{ success: boolean; message_data: any; message: string }>('/api/ai/messages', {
+    request<{ success: boolean; message_data: any; message: string }>('/ai/messages', {
       method: 'POST',
       body: JSON.stringify({ conversation_id: conversationId, role, content, tokens }),
     }),
 
   // 更新消息
   updateMessage: (messageId: number, data: { content?: string; tokens?: number }) =>
-    request<{ success: boolean; message_data: any; message: string }>(`/api/ai/messages/${messageId}`, {
+    request<{ success: boolean; message_data: any; message: string }>(`/ai/messages/${messageId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
 
   // 删除消息
   deleteMessage: (messageId: number) =>
-    request<{ success: boolean; message: string }>(`/api/ai/messages/${messageId}`, {
+    request<{ success: boolean; message: string }>(`/ai/messages/${messageId}`, {
       method: 'DELETE',
     }),
 
   // 获取对话消息统计摘要
   getConversationMessagesSummary: (conversationId: number) =>
-    request<{ success: boolean; summary: any }>(`/api/ai/messages/conversation/${conversationId}/summary`),
+    request<{ success: boolean; summary: any }>(`/ai/messages/conversation/${conversationId}/summary`),
 };
 
 // 聊天API
@@ -346,7 +346,7 @@ export const chatApi = {
       conversation: any;
       messages: any[];
       message: string;
-    }>('/api/ai/chat', {
+    }>('/ai/chat', {
       method: 'POST',
       body: JSON.stringify({ user_id: userId, agent_id: agentId, message, conversation_id: conversationId }),
     }),
@@ -358,7 +358,7 @@ export const chatApi = {
       conversation: any;
       messages: any[];
       message: string;
-    }>('/api/ai/chat/stream', {
+    }>('/ai/chat/stream', {
       method: 'POST',
       body: JSON.stringify({ user_id: userId, agent_id: agentId, message, conversation_id: conversationId }),
     }),
@@ -366,7 +366,7 @@ export const chatApi = {
   // 测试智能体API连通性
   testAgentApi: (agentId: number) =>
     request<{ success: boolean; agent: any; test_message: string; response: string; tokens: number; status: string }>(
-      `/api/ai/chat/agents/${agentId}/test`
+      `/ai/chat/agents/${agentId}/test`
     ),
 };
 
@@ -374,7 +374,7 @@ export const chatApi = {
 export const statsApi = {
   // 获取系统总体统计摘要
   getSystemSummary: () =>
-    request<{ success: boolean; stats: any }>('/api/ai/data/stats'),
+    request<{ success: boolean; stats: any }>('/ai/data/stats'),
 
   // 获取使用趋势（暂不支持，返回空数据）
   getUsageTrend: (days: number = 7) =>
@@ -388,7 +388,7 @@ export const statsApi = {
 
   // 获取智能体使用排名
   getAgentsRanking: (limit: number = 10) =>
-    request<{ success: boolean; ranking: any[] }>(`/api/ai/data/agents/ranking?limit=${limit}`),
+    request<{ success: boolean; ranking: any[] }>(`/ai/data/agents/ranking?limit=${limit}`),
 
   // 获取用户使用排名（暂不支持，返回空数据）
   getUsersRanking: (limit: number = 10) =>
@@ -417,7 +417,7 @@ export const dataApi = {
     page: number = 1,
     page_size: number = 20
   ) => {
-    let url = `/api/ai/data/students?page=${page}&page_size=${page_size}`;
+    let url = `/ai/data/students?page=${page}&page_size=${page_size}`;
     if (class_name) url += `&class_name=${encodeURIComponent(class_name)}`;
     if (search) url += `&search=${encodeURIComponent(search)}`;
     return request<{
@@ -431,11 +431,11 @@ export const dataApi = {
 
   // 获取系统总体统计
   getSystemStats: () =>
-    request<{ success: boolean; stats: any }>('/api/ai/data/stats'),
+    request<{ success: boolean; stats: any }>('/ai/data/stats'),
 
   // 获取智能体使用排名
   getAgentsRanking: (limit: number = 10) =>
-    request<{ success: boolean; ranking: any[] }>(`/api/ai/data/agents/ranking?limit=${limit}`),
+    request<{ success: boolean; ranking: any[] }>(`/ai/data/agents/ranking?limit=${limit}`),
 
   // 获取学生对话列表
   getStudentConversations: (
@@ -445,7 +445,7 @@ export const dataApi = {
     page: number = 1,
     page_size: number = 10
   ) => {
-    let url = `/api/ai/data/students/${student_id}/conversations?page=${page}&page_size=${page_size}`;
+    let url = `/ai/data/students/${student_id}/conversations?page=${page}&page_size=${page_size}`;
     if (start_date) url += `&start_date=${encodeURIComponent(start_date)}`;
     if (end_date) url += `&end_date=${encodeURIComponent(end_date)}`;
     return request<{
@@ -459,11 +459,7 @@ export const dataApi = {
 
   // 获取对话详情
   getConversationDetails: (conversation_id: number) =>
-    request<{
-      success: boolean;
-      conversation: any;
-      messages: any[];
-    }>(`/api/ai/data/conversations/${conversation_id}`),
+    request<{ success: boolean; conversation: any; messages: any[] }>(`/ai/data/conversations/${conversation_id}`),
 };
 
 // 导出所有API

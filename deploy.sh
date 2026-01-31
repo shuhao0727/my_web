@@ -141,8 +141,8 @@ start_dev() {
     cd ..
 
     log_success "开发模式启动完成"
-    echo "前端: http://localhost:6608"
-    echo "后端: http://localhost:8000"
+    echo "前端: http://${FRONTEND_HOST:-localhost}:${FRONTEND_PORT:-6608}"
+    echo "后端: http://${BACKEND_HOST:-localhost}:${BACKEND_PORT:-8000}"
 
     # 等待进程
     wait $BACKEND_PID $FRONTEND_PID
@@ -243,13 +243,13 @@ start_docker() {
         exit 1
     fi
 
-    if [ -f "docker-compose.yml" ]; then
-        docker-compose up -d --build
-        log_success "Docker 容器启动完成"
-        echo "前端: http://localhost:6608"
-        echo "后端: http://localhost:8000"
+    if [ -f "docker-compose.dev.yml" ]; then
+        docker-compose -f docker-compose.dev.yml up -d --build
+        log_success "开发环境 Docker 容器启动完成"
+        echo "前端: http://${FRONTEND_HOST:-localhost}:${FRONTEND_PORT:-6608}"
+        echo "后端: http://${BACKEND_HOST:-localhost}:${BACKEND_PORT:-8000}"
     else
-        log_error "docker-compose.yml 不存在"
+        log_error "docker-compose.dev.yml 不存在"
         exit 1
     fi
 }
@@ -283,8 +283,8 @@ start_docker_prod() {
         exit 1
     fi
 
-    if [ -f "docker-compose.prod.yml" ]; then
-        docker-compose -f docker-compose.prod.yml up -d --build
+    if [ -f "docker-compose.prod.amd.yml" ]; then
+        docker-compose -f docker-compose.prod.amd.yml up -d --build
         log_success "生产环境 Docker 容器启动完成"
         echo "前端: http://localhost:6608"
         echo "后端: http://localhost:8000"

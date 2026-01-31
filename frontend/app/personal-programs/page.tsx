@@ -131,12 +131,19 @@ export default function PersonalProgramsPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
-      {/* 用户状态栏 - 只保留右侧用户信息 */}
-      <div className="border-b border-gray-100 bg-white px-4 py-3">
-        <div className="container mx-auto flex items-center justify-end">
-          {/* 只保留用户信息与退出按钮 */}
-          {user.isLoggedIn ? (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      {/* 背景装饰 */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-pulse"></div>
+        <div className="absolute -bottom-20 -left-40 w-80 h-80 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-pulse delay-1000"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-cyan-200 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse delay-2000"></div>
+      </div>
+
+      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4 py-12">
+        <div className="max-w-6xl mx-auto w-full">
+          {/* 用户状态栏 */}
+          <div className="flex justify-end mb-12">
+            {user.isLoggedIn ? (
               <div className="flex items-center space-x-4">
                 <Dropdown
                   menu={{
@@ -149,50 +156,55 @@ export default function PersonalProgramsPage() {
                     type="text" 
                     icon={<UserOutlined />}
                     className="flex items-center"
-                  />
+                  >
+                    {user.name}
+                  </Button>
                 </Dropdown>
                 <Button 
                   type="default" 
                   icon={<LogoutOutlined />}
                   onClick={handleLogout}
-                  className="hidden md:inline-flex"
                 >
                   退出
                 </Button>
               </div>
-          ) : (
-            <Button 
-              type="primary" 
-              icon={<LoginOutlined />}
-              onClick={() => setLoginModalVisible(true)}
-            >
-              登录
-            </Button>
-          )}
-        </div>
-      </div>
+            ) : (
+              <Button 
+                type="primary" 
+                icon={<LoginOutlined />}
+                onClick={() => setLoginModalVisible(true)}
+              >
+                登录
+              </Button>
+            )}
+          </div>
 
-      {/* 主要内容区域 - 卡片网格 */}
-      <div className="flex-1 container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          {/* 程序卡片网格 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* 主要内容区域 - 卡片网格 */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {programItems.map((item, index) => {
               const cardContent = (
-                <div className="p-6 rounded-lg border border-gray-300 bg-white hover:border-blue-300 hover:shadow-md transition-all duration-200 h-full">
-                  <div 
-                    className="w-14 h-14 rounded-lg flex items-center justify-center mb-4 mx-auto"
-                    style={{ backgroundColor: `${item.color}15` }}
-                  >
-                    <div style={{ color: item.color, fontSize: '24px' }}>
-                      {item.icon}
+                <div className="group relative bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 hover:border-transparent">
+                  {/* 渐变背景 */}
+                  <div className={`absolute inset-0 bg-gradient-to-br from-blue-400 to-blue-600 opacity-0 group-hover:opacity-5 rounded-2xl transition-opacity duration-300`}></div>
+                  
+                  {/* 图标容器 */}
+                  <div className="relative z-10 flex flex-col items-center">
+                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6 transition-all duration-300 group-hover:scale-110 bg-blue-50">
+                      <div 
+                        className="text-3xl transition-all duration-300 group-hover:scale-125"
+                        style={{ color: item.color }}
+                      >
+                        {item.icon}
+                      </div>
                     </div>
-                  </div>
-                  <div className="text-center">
-                    <div className="font-semibold text-gray-900 group-hover:text-blue-600">
+                    
+                    <h3 className="text-lg font-semibold text-gray-900 group-hover:text-gray-800 transition-colors duration-300">
                       {item.title}
-                    </div>
+                    </h3>
                   </div>
+
+                  {/* 悬停效果遮罩 */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-white/0 to-white/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl pointer-events-none"></div>
                 </div>
               );
 
@@ -202,7 +214,7 @@ export default function PersonalProgramsPage() {
                   <Link
                     key={index}
                     href={item.link}
-                    className="group block h-full"
+                    className="block transform transition-transform duration-300 hover:scale-105"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -213,7 +225,7 @@ export default function PersonalProgramsPage() {
                 return (
                   <div 
                     key={index} 
-                    className="group block h-full cursor-pointer"
+                    className="block transform transition-transform duration-300 hover:scale-105 cursor-pointer"
                     onClick={() => {
                       if (!user.isLoggedIn) {
                         message.warning('请先登录');

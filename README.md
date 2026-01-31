@@ -83,9 +83,9 @@ docker-compose up -d --build
 ```
 
 #### 2. 访问应用
-- 前端：http://localhost:3000
-- 后端API：http://localhost:8000
-- 文档：http://localhost:8000/docs
+- 前端：http://${FRONTEND_HOST:-localhost}:${FRONTEND_PORT:-3000}
+- 后端API：http://${BACKEND_HOST:-localhost}:${BACKEND_PORT:-8000}
+- 文档：http://${BACKEND_HOST:-localhost}:${BACKEND_PORT:-8000}/docs
 
 ## 项目结构
 
@@ -111,9 +111,9 @@ my_web/
 ├── deploy.sh                  # 项目部署脚本
 ├── Dockerfile.backend         # 后端Dockerfile (X86架构优化)
 ├── Dockerfile.frontend        # 前端Dockerfile (X86架构优化)
-├── docker-compose.yml         # 开发环境Docker Compose配置
-├── docker-compose.prod.yml    # 生产环境Docker Compose配置
-├── nginx.conf                 # Nginx反向代理配置
+├── docker-compose.dev.yml         # 开发环境Docker Compose配置
+├── docker-compose.prod.amd.yml    # 生产环境Docker Compose配置 (AMD64)
+├── nginx.prod.conf            # Nginx生产环境配置
 ├── CONFIGURATION.md           # 配置文件说明
 └── .env.example              # 环境变量示例
 ```

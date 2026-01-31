@@ -121,7 +121,7 @@ async def general_exception_handler(request, exc):
     )
 
 # 配置CORS
-allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:6608,*").split(",")
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 
 app.add_middleware(
     CORSMiddleware,
@@ -152,7 +152,7 @@ except ImportError as e:
 # 新增AI智能体路由（模块化版本）
 try:
     from routers.ai.ai_main import router as ai_agent_router
-    app.include_router(ai_agent_router, prefix="/api/ai")  # 添加前缀
+    app.include_router(ai_agent_router, prefix="/api/ai")  # 保持/api前缀以适配Nginx配置
     print("✅ AI智能体路由已加载（模块化版本）")
 except ImportError as e:
     print(f"⚠️  AI智能体路由导入失败: {e}")
@@ -160,7 +160,7 @@ except ImportError as e:
 # 新增XBK应用路由
 try:
     from routers.xbk.applications import xbk_router
-    app.include_router(xbk_router, prefix="/api/xbk")  # 添加前缀
+    app.include_router(xbk_router, prefix="/api/xbk")  # 保持/api前缀以适配Nginx配置
     print("✅ XBK应用路由已加载")
 except ImportError as e:
     print(f"⚠️  XBK应用路由导入失败: {e}")
@@ -168,7 +168,7 @@ except ImportError as e:
 # 新增XBK数据处理路由
 try:
     from routers.xbk.routes import data_router
-    app.include_router(data_router, prefix="/api/xbk")  # 添加前缀
+    app.include_router(data_router, prefix="/api/xbk")  # 保持/api前缀以适配Nginx配置
     print("✅ XBK数据处理路由已加载")
 except ImportError as e:
     print(f"⚠️  XBK数据处理路由导入失败: {e}")
@@ -176,7 +176,7 @@ except ImportError as e:
 # 新增XBK安全认证路由
 try:
     from routers.xbk.auth import router as auth_router
-    app.include_router(auth_router, prefix="/api/xbk")  # 添加前缀
+    app.include_router(auth_router, prefix="/api/xbk")  # 保持/api前缀以适配Nginx配置
     print("✅ XBK安全认证路由已加载")
 except ImportError as e:
     print(f"⚠️  XBK安全认证路由导入失败: {e}")
@@ -184,10 +184,18 @@ except ImportError as e:
 # 新增Typst内容路由
 try:
     from routers.typst_content import router as typst_router
-    app.include_router(typst_router)
+    app.include_router(typst_router, prefix="/api/typst")  # 保持/api前缀以适配Nginx配置
     print("✅ Typst内容路由已加载")
 except ImportError as e:
     print(f"⚠️  Typst内容路由导入失败: {e}")
+
+# 新增Markdown内容路由
+try:
+    from routers.md_content import router as md_router
+    app.include_router(md_router)  # 使用路由中定义的前缀
+    print("✅ Markdown内容路由已加载")
+except ImportError as e:
+    print(f"⚠️  Markdown内容路由导入失败: {e}")
 
 # 健康检查
 @app.get("/")
@@ -206,6 +214,15 @@ async def root():
 @app.get("/health")
 async def health_check():
     """健康检查端点"""
+    return {
+        "status": "healthy",
+        "environment": os.getenv("APP_ENV", "development"),
+        "database_status": "connected" if test_connections() is None else "disconnected"
+    }
+
+@app.get("/api/health")
+async def api_health_check():
+    """API健康检查端点（为Nginx代理提供统一前缀）"""
     return {
         "status": "healthy",
         "environment": os.getenv("APP_ENV", "development"),

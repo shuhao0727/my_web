@@ -51,8 +51,8 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
           onFinish={handleSearch}
           initialValues={filters}
         >
-          <Row gutter={[16, 16]} style={{ width: '100%' }}>
-            <Col xs={24} sm={12} md={4}>
+          <Row gutter={[12, 8]} style={{ width: '100%' }}>
+            <Col xs={24} sm={12} md={6}>
               <Form.Item label="年份" name="year">
                 <InputNumber 
                   placeholder="输入年份" 
@@ -62,7 +62,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
                 />
               </Form.Item>
             </Col>
-            <Col xs={24} sm={12} md={4}>
+            <Col xs={24} sm={12} md={6}>
               <Form.Item label="年级" name="grade">
                 <Select
                   placeholder="请选择年级"
@@ -77,7 +77,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
                 </Select>
               </Form.Item>
             </Col>
-            <Col xs={24} sm={12} md={4}>
+            <Col xs={24} sm={12} md={6}>
               <Form.Item label="班级" name="class">
                 <Select
                   placeholder="请选择班级"
@@ -92,7 +92,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
                 </Select>
               </Form.Item>
             </Col>
-            <Col xs={24} sm={12} md={8}>
+            <Col xs={24} sm={12} md={6}>
               <Form.Item label="搜索" name="searchText">
                 <Input
                   placeholder="输入姓名、教师、课程代码等"
@@ -101,7 +101,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
                 />
               </Form.Item>
             </Col>
-            <Col xs={24} sm={12} md={4}>
+            <Col xs={24} sm={12} md={12}>
               <Form.Item>
                 <Space>
                   <Button

@@ -1,12 +1,17 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Spin, Modal, Form, Input, Select, Button } from 'antd';
+import { Spin, Modal, Form, Input, Select, Button, Tooltip, Avatar } from 'antd';
+import { 
+  RobotOutlined, 
+  DashboardOutlined, 
+  LogoutOutlined,
+  UserOutlined
+} from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import aiApi from '@/lib/aiApi';
 
 // 导入组件
-import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import ChatArea from './components/ChatArea';
 
@@ -383,14 +388,60 @@ export default function AiLabPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* 顶部工具栏 */}
-      <Header 
-        user={user}
-        onOpenAdminPanel={handleOpenAdminPanel}
-        onLogout={handleLogout}
-      />
-
       <div className="container mx-auto px-4 py-6">
+        {/* 用户工具栏 */}
+        <div className="border-b border-gray-100 bg-white shadow-sm rounded-lg mb-6">
+          <div className="px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-3">
+                  <RobotOutlined className="text-2xl text-blue-600" />
+                </div>
+                
+                <div className="hidden md:block">
+                  {user && (
+                    <div className="flex items-center space-x-3">
+                      <Avatar 
+                        size="small" 
+                        style={{ backgroundColor: user.isAdmin ? '#1890ff' : '#52c41a' }}
+                      >
+                        {user.username.charAt(0).toUpperCase()}
+                      </Avatar>
+                      <div>
+                        <div className="text-sm font-medium">{user.username}</div>
+                        {user.isAdmin && (
+                          <div className="text-xs text-gray-500">管理员</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-3">
+                {user?.isAdmin && (
+                  <Tooltip title="管理智能体">
+                    <Button
+                      type="primary"
+                      icon={<DashboardOutlined />}
+                      onClick={handleOpenAdminPanel}
+                    >
+                      管理
+                    </Button>
+                  </Tooltip>
+                )}
+                
+                <Button
+                  icon={<LogoutOutlined />}
+                  onClick={handleLogout}
+                >
+                  退出
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="flex flex-col lg:flex-row gap-6">
           {/* 左侧边栏 */}
           <Sidebar

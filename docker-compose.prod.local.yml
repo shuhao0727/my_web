@@ -1,0 +1,88 @@
+# MyWeb 生产模式配置 (本地构建)
+# 前端使用6608端口，后端不对外暴露，Nginx统一代理
+# 部署命令: docker-compose -f docker-compose.prod.local.yml up -d --build
+
+version: '3.8'
+services:
+  backend:
+    image: myweb-backend:47ebb5924235
+    container_name: myweb_backend_prod
+    environment:
+      - APP_ENV=production
+      - BACKEND_HOST=0.0.0.0
+      - BACKEND_PORT=8000
+      - DATABASE_URL=sqlite:///xbk.db
+      - AI_DATABASE_URL=sqlite:///znt.db
+      - XBK_DB_PATH=/xbk.db
+      - ZNT_DB_PATH=/znt.db
+      - XBK_JWT_SECRET_KEY=myweb-xbk-secret-key
+      - JWT_SECRET_KEY=myweb-jwt-secret-key
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=admin123
+      - WANGSHU_USERNAME=wangshu0727
+      - WANGSHU_PASSWORD=wangshu123
+      - CONTENT_DIR=/content
+      - GITHUB_REPO_NAME=2-My-notes
+      - ALLOWED_ORIGINS=http://nginx:6608
+    volumes:
+      - ./backend/content:/content
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - |
+          import sys
+          import urllib.request
+          import json
+          try:
+              with urllib.request.urlopen('http://localhost:8000/health', timeout=5) as response:
+                  data = json.loads(response.read().decode())
+                  if data.get('status') == 'healthy':
+                      sys.exit(0)
+                  else:
+                      sys.exit(1)
+          except Exception as e:
+              print(f"Health check failed: {e}")
+              sys.exit(1)
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    expose:
+      - '8000'
+    # 生产环境不对外暴露后端端口
+
+  frontend:
+    image: myweb-frontend:0da9c992ce2e
+    container_name: myweb_frontend_prod
+    environment:
+      - NEXT_PUBLIC_API_URL=/api
+      - NODE_ENV=production
+      - PORT=3000
+    restart: unless-stopped
+    depends_on:
+      - backend
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - -f
+        - http://localhost:3000/health
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    expose:
+      - '3000'
+
+  nginx:
+    image: nginx:alpine
+    container_name: myweb_nginx_prod
+    ports:
+      - "6608:6608"  # 生产环境使用6608端口提供外部访问
+    volumes:
+      - ./nginx.prod.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+      - frontend
+    restart: unless-stopped

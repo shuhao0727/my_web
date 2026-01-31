@@ -50,13 +50,17 @@ check_tools() {
 generate_dependency_id() {
     log_info "生成后端依赖ID..."
     
-    if [ -f "backend/requirements.txt" ]; then
+    # 使用绝对路径或回到项目根目录
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+    
+    if [ -f "$PROJECT_ROOT/backend/requirements.txt" ]; then
         # 基于requirements.txt生成依赖ID
-        DEPENDENCY_ID=$(sha256sum backend/requirements.txt | cut -d' ' -f1)
-        echo $DEPENDENCY_ID > backend-dependency-id.txt
+        DEPENDENCY_ID=$(sha256sum "$PROJECT_ROOT/backend/requirements.txt" | cut -d' ' -f1)
+        echo $DEPENDENCY_ID > "$PROJECT_ROOT/backend-dependency-id.txt"
         log_info "依赖ID: $DEPENDENCY_ID"
     else
-        log_error "找不到 backend/requirements.txt"
+        log_error "找不到 $PROJECT_ROOT/backend/requirements.txt"
         exit 1
     fi
 }
@@ -126,6 +130,18 @@ build_backend_image() {
         TAG="latest"
     fi
     
+    # 检查是否有架构参数
+    ARCH=""
+    if [ "$2" = "amd64" ]; then
+        ARCH="--platform linux/amd64"
+        log_info "构建 AMD64 架构镜像"
+    elif [ "$2" = "arm64" ]; then
+        ARCH="--platform linux/arm64"
+        log_info "构建 ARM64 架构镜像"
+    else
+        log_info "构建当前平台架构镜像"
+    fi
+    
     # 构建参数
     BUILD_ARGS=""
     
@@ -138,7 +154,7 @@ build_backend_image() {
     fi
     
     # 构建镜像
-    docker build -f Dockerfile.backend \
+    docker build $ARCH -f Dockerfile.backend \
         -t myweb-backend:${TAG} \
         -t myweb-backend:latest \
         --build-arg BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
@@ -256,7 +272,7 @@ main() {
             check_tools
             check_local_typst
             generate_dependency_id
-            build_backend_image
+            build_backend_image $@
             ;;
         push)
             check_tools

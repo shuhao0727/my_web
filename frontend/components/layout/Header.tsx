@@ -38,15 +38,15 @@ const Header: React.FC = () => {
       link: '/personal-programs',
     },
     {
-      key: 'blog',
+      key: 'articles',
       label: '文章',
       icon: <FileTextOutlined />,
-      link: '/blog',
+      link: '/articles',
     }
   ];
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-100" suppressHydrationWarning translate="no">
+    <header className="bg-white shadow-sm border-b border-gray-100 relative z-50" suppressHydrationWarning translate="no">
       {/* 主导航栏 */}
       <div className="container mx-auto px-4">
         <div className="relative h-16">

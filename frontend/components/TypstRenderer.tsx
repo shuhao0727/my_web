@@ -73,7 +73,8 @@ export default function TypstRenderer({
       
       // 调用渲染API，请求SVG格式
       const encodedPath = encodeURIComponent(filePath);
-      const response = await fetch(`http://localhost:8000/api/typst/render/${encodedPath}?output_format=svg`);
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || '/api';
+      const response = await fetch(`${apiBase}/typst/render/${encodedPath}?output_format=svg`);
       
       if (response.ok) {
         const data = await response.json();

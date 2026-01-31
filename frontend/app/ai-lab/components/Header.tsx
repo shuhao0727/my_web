@@ -27,6 +27,7 @@ export default function Header({
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-3">
               <RobotOutlined className="text-2xl text-blue-600" />
+    
             </div>
             
             <div className="hidden md:block">

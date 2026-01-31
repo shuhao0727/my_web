@@ -28,7 +28,7 @@ def get_repo_dir() -> Path:
     repo_name = os.getenv("GITHUB_REPO_NAME", "2-My-notes")
     return get_content_dir() / repo_name
 
-@router.get("/api/typst/tree")
+@router.get("/tree")
 async def get_typst_tree(path: str = ""):
     """获取Typst文件树结构
     
@@ -88,7 +88,7 @@ async def get_typst_tree(path: str = ""):
         logger.error(f"获取文件树失败: {e}")
         raise HTTPException(status_code=500, detail=f"获取文件树失败: {str(e)}")
 
-@router.get("/api/typst/content/{filepath:path}")
+@router.get("/content/{filepath:path}")
 async def get_typst_content(filepath: str):
     """获取Typst文件内容
     
@@ -142,7 +142,7 @@ async def get_typst_content(filepath: str):
         logger.error(f"读取文件内容失败: {e}")
         raise HTTPException(status_code=500, detail=f"读取文件内容失败: {str(e)}")
 
-@router.get("/api/typst/structure")
+@router.get("/structure")
 async def get_typst_structure():
     """获取Typst仓库的整体结构"""
     try:
@@ -196,7 +196,7 @@ async def get_typst_structure():
         logger.error(f"获取仓库结构失败: {e}")
         raise HTTPException(status_code=500, detail=f"获取仓库结构失败: {str(e)}")
 
-@router.get("/api/typst/search")
+@router.get("/search")
 async def search_typst_files(
     query: str = Query(..., min_length=1, description="搜索关键词"),
     file_ext: Optional[str] = Query(".typ", description="文件扩展名过滤")
@@ -296,7 +296,7 @@ def format_category_name(category: str) -> str:
     return category.replace('-', ' ').title()
 
 # 健康检查端点
-@router.get("/api/typst/health")
+@router.get("/health")
 async def typst_health_check():
     """Typst API健康检查"""
     try:
@@ -315,7 +315,7 @@ async def typst_health_check():
             "error": str(e),
         }
 
-@router.post("/api/typst/compile")
+@router.post("/compile")
 async def compile_typst(request: dict):
     """编译Typst文档
     
@@ -403,7 +403,7 @@ async def compile_typst(request: dict):
         logger.error(error_msg)
         raise HTTPException(status_code=500, detail=error_msg)
 
-@router.get("/api/typst/render/{filepath:path}")
+@router.get("/render/{filepath:path}")
 async def render_typst_file(filepath: str, output_format: str = Query("svg", regex="^(svg|pdf)$")):
     """渲染Typst文件为SVG或PDF
     
@@ -549,14 +549,14 @@ if __name__ == "__main__":
         
         client = TestClient(app)
         
-        response = client.get("/api/typst/health")
+        response = client.get("/health")
         print(f"健康检查: {response.status_code} - {response.json()}")
         
-        response = client.get("/api/typst/structure")
+        response = client.get("/structure")
         print(f"结构信息: {response.status_code} - {response.json()}")
         
         # 测试文件树
-        response = client.get("/api/typst/tree")
+        response = client.get("/tree")
         print(f"文件树: {response.status_code} - {response.json()}")
     
     asyncio.run(test())

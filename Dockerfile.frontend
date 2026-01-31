@@ -1,61 +1,53 @@
-# 前端服务 Dockerfile - 简化版本，避免ARM架构兼容性问题
-FROM node:20-bookworm-slim AS builder
+# 前端服务 Dockerfile - 使用本地node镜像哈希（完全离线构建）
+FROM node@sha256:09e2b3d9726018aecf269bd35325f46bf75046a643a66d28360ec71132750ec8 AS builder
 
 # 设置工作目录
 WORKDIR /app
 
 # 复制依赖文件
-COPY frontend/package.json ./
+COPY frontend/package*.json ./
 
-# 安装依赖（包含开发依赖，因为构建需要tailwindcss等）
-RUN npm install --registry=https://registry.npmmirror.com
+# 配置npm使用国内镜像源
+RUN npm config set registry https://registry.npmmirror.com/
+
+# 安装依赖（包含开发依赖，因为构建需要）
+RUN npm ci --only=production=false
 
 # 复制项目代码
 COPY frontend/ .
 
-# 构建应用 - 禁用Turbopack并设置Node.js选项
+# 构建应用
 ENV NODE_OPTIONS='--experimental-global-webcrypto'
 ENV NEXT_TURBOPACK=0
-
-# 在构建时传递环境变量，用于Next.js生成正确的代理规则
-# 这里设置默认值，实际运行时会被docker-compose覆盖
-ENV NEXT_PUBLIC_API_URL=http://backend:8000
-ENV NEXT_PUBLIC_API_URL_INTERNAL=http://backend:8000
+ENV NEXT_PUBLIC_API_URL=/api
+ENV NEXT_PUBLIC_API_URL_INTERNAL=/api
 ENV NODE_ENV=production
 
 RUN npm run build
 
-# 创建依赖ID文件，记录确切的依赖版本和哈希
-RUN npm ls --depth=0 --parseable > /tmp/dependency-ids.txt && \
-    echo "BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)" > /tmp/build-info.txt && \
-    echo "DEPENDENCY_HASH=$(npm ls --depth=0 --parseable | md5sum | cut -d' ' -f1)" >> /tmp/build-info.txt
-
-# 运行阶段（使用相同的Debian镜像）
-FROM node:20-bookworm-slim AS runner
+# 运行阶段（使用相同的基础镜像哈希）
+FROM node@sha256:09e2b3d9726018aecf269bd35325f46bf75046a643a66d28360ec71132750ec8 AS runner
 
 WORKDIR /app
 
-# 安装dumb-init（使用系统代理）
-RUN apt-get update && apt-get install -y --no-install-recommends dumb-init && apt-get clean && rm -rf /var/lib/apt/lists/*
+# 安装运行时依赖
+RUN apk add --no-cache dumb-init
 
 # 配置npm镜像源
 RUN npm config set registry https://registry.npmmirror.com/
 
-# 从构建阶段复制依赖和构建产物
+# 从构建阶段复制构建产物
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/public ./public
-COPY --from=builder /tmp/dependency-ids.txt ./dependency-ids.txt
-COPY --from=builder /tmp/build-info.txt ./build-info.txt
-
-# 生成最终的依赖哈希文件
-RUN cat build-info.txt && \
-    echo "FINAL_DEPENDENCY_HASH=$(cat dependency-ids.txt | md5sum | cut -d' ' -f1)" > /app/dependency-hash.txt
+COPY --from=builder /app/next.config.ts ./
+COPY --from=builder /app/tsconfig.json ./
+COPY --from=builder /app/postcss.config.mjs ./
 
 # 暴露端口
 EXPOSE 3000
 
 # 安全启动应用
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["sh", "-c", "echo 'Frontend dependency hash: $(cat dependency-hash.txt)' && npm start"]
+CMD ["sh", "-c", "npm start"]
