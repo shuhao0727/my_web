@@ -12,15 +12,16 @@ WORKDIR /app
 RUN test -f /etc/apt/sources.list && sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list; \
     test -f /etc/apt/sources.list.d/debian.sources && sed -i 's/security.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources || true
 
-# 安装系统依赖（独立的缓存层）
-RUN apt-get update && apt-get install -y \
-    gcc \
-    g++ \
+# 安装系统依赖（独立的缓存层）- 清除代理设置
+RUN http_proxy= https_proxy= HTTP_PROXY= HTTPS_PROXY= no_proxy= NO_PROXY= apt-get update && \
+    http_proxy= https_proxy= HTTP_PROXY= HTTPS_PROXY= no_proxy= NO_PROXY= apt-get install -y \
     curl \
     wget \
     ca-certificates \
     dumb-init \
     xz-utils \
+    python3-dev \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # 安装Typst - 优先使用本地缓存，支持架构检测
@@ -84,7 +85,17 @@ RUN test -f /etc/apt/sources.list && sed -i 's/deb.debian.org/mirrors.aliyun.com
     apt-get update && apt-get install -y \
     dumb-init \
     ca-certificates \
+    fonts-wqy-microhei \
+    fonts-wqy-zenhei \
+    fonts-noto-cjk \
+    fonts-dejavu \
     && rm -rf /var/lib/apt/lists/*
+
+# 创建字体配置和链接
+RUN mkdir -p /usr/share/fonts/opentype && \
+    mkdir -p /usr/share/fonts/truetype && \
+    ln -sf /usr/share/fonts/truetype/wqy /usr/share/fonts/wqy && \
+    fc-cache -f -v
 
 # 配置pip使用国内镜像源（用于运行时可能需要的额外依赖）
 ENV PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple/

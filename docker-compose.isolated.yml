@@ -1,0 +1,118 @@
+# MyWeb 生产隔离环境配置
+# 专门用于与现有dify环境隔离运行
+# 使用独立的myweb_network网络，避免网络冲突
+# 部署命令: docker-compose -f docker-compose.isolated.yml up -d
+
+version: '3.8'
+
+networks:
+  myweb_isolated:
+    external: true
+    name: myweb_network
+
+services:
+  backend:
+    image: shuhao07/myweb-backend:latest
+    container_name: myweb_backend_isolated
+    environment:
+      - APP_ENV=production
+      - BACKEND_HOST=0.0.0.0
+      - BACKEND_PORT=8000
+      - DATABASE_URL=sqlite:///xbk.db
+      - AI_DATABASE_URL=sqlite:///znt.db
+      - XBK_DB_PATH=/xbk.db
+      - ZNT_DB_PATH=/znt.db
+      - XBK_JWT_SECRET_KEY=myweb-xbk-secret-key
+      - JWT_SECRET_KEY=myweb-jwt-secret-key
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=admin123
+      - WANGSHU_USERNAME=wangshu0727
+      - WANGSHU_PASSWORD=wangshu123
+      - CONTENT_DIR=/content
+      - GITHUB_REPO_NAME=2-My-notes
+      - ALLOWED_ORIGINS=http://nginx:6608
+    volumes:
+      - ./backend/content:/content
+    restart: unless-stopped
+    networks:
+      - myweb_isolated
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - |
+          import sys
+          import urllib.request
+          import json
+          try:
+              with urllib.request.urlopen('http://localhost:8000/health', timeout=5) as response:
+                  data = json.loads(response.read().decode())
+                  if data.get('status') == 'healthy':
+                      sys.exit(0)
+                  else:
+                      sys.exit(1)
+          except Exception as e:
+              print(f"Health check failed: {e}")
+              sys.exit(1)
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    expose:
+      - '8000'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  frontend:
+    image: shuhao07/myweb-frontend:latest
+    container_name: myweb_frontend_isolated
+    environment:
+      - NEXT_PUBLIC_API_URL=/api
+      - NODE_ENV=production
+      - PORT=3000
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - myweb_isolated
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - -f
+        - http://localhost:3000/health
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    expose:
+      - '3000'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  nginx:
+    image: nginx:alpine
+    container_name: myweb_nginx_isolated
+    ports:
+      - "6608:6608"  # 使用6608端口，不会与dify的443/6606冲突
+    volumes:
+      - ./nginx.prod.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+    networks:
+      - myweb_isolated
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

@@ -71,8 +71,8 @@ async def get_typst_tree(path: str = ""):
             }
             files.append(file_info)
         
-        # 排序：目录在前，文件在后，按名称排序
-        files.sort(key=lambda x: (x["type"] != "directory", x["name"].lower()))
+        # 排序：目录在前，文件在后，按自然排序
+        files.sort(key=lambda x: (x["type"] != "directory", natural_sort_key(x["name"])))
         
         return {
             "success": True,
@@ -175,16 +175,24 @@ async def get_typst_structure():
         # 获取所有章节分类
         chapters_dir = repo_dir / "chapters"
         if chapters_dir.exists():
-            structure["chapters"]["categories"] = []
+            categories = []
             for category_dir in chapters_dir.iterdir():
                 if category_dir.is_dir():
+                    # 获取文件并按自然排序
+                    files = [f.name for f in category_dir.glob("*.typ")]
+                    files.sort(key=natural_sort_key)
+                    
                     category_info = {
                         "name": category_dir.name,
                         "display_name": format_category_name(category_dir.name),
-                        "file_count": len(list(category_dir.glob("*.typ"))),
-                        "files": [f.name for f in category_dir.glob("*.typ")],
+                        "file_count": len(files),
+                        "files": files,
                     }
-                    structure["chapters"]["categories"].append(category_info)
+                    categories.append(category_info)
+            
+            # 对分类按自然排序
+            categories.sort(key=lambda x: natural_sort_key(x["name"]))
+            structure["chapters"]["categories"] = categories
         
         return {
             "success": True,
@@ -314,6 +322,28 @@ async def typst_health_check():
             "status": "error",
             "error": str(e),
         }
+
+def natural_sort_key(s: str) -> list:
+    """生成自然排序键，支持数字和文本混合的字符串
+    
+    Args:
+        s: 要排序的字符串
+        
+    Returns:
+        用于排序的键列表
+    """
+    import re
+    # 将字符串分割为数字和非数字部分
+    parts = re.split(r'(\d+)', s)
+    # 转换数字部分为整数，非数字部分保持原样
+    key = []
+    for part in parts:
+        if part.isdigit():
+            key.append(int(part))
+        else:
+            # 对于非数字部分，转换为小写进行比较
+            key.append(part.lower())
+    return key
 
 @router.post("/compile")
 async def compile_typst(request: dict):
