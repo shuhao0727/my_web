@@ -5,7 +5,7 @@
 version: '3.8'
 services:
   backend:
-    image: shuhao07/myweb-backend:latest
+    image: shuhao07/myweb-backend:v1.0.1
     container_name: myweb_backend_prod_amd64
     platform: linux/amd64
     environment:
@@ -55,7 +55,7 @@ services:
     # 生产环境不对外暴露后端端口
 
   frontend:
-    image: shuhao07/myweb-frontend:latest
+    image: shuhao07/myweb-frontend:v1.0.1
     container_name: myweb_frontend_prod_amd64
     platform: linux/amd64
     environment:
