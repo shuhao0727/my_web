@@ -23,18 +23,41 @@ RUN apt-get update && apt-get install -y \
     xz-utils \
     && rm -rf /var/lib/apt/lists/*
 
-# 安装Typst - 支持本地缓存或网络下载
+# 安装Typst - 优先使用本地缓存，支持架构检测
+ARG TARGETARCH
 COPY .typst-cache/typst /tmp/typst-cache/typst
-RUN if [ -f /tmp/typst-cache/typst ]; then \
+RUN echo "目标架构: $TARGETARCH" && \
+    # 优先使用本地缓存
+    if [ -f /tmp/typst-cache/typst ]; then \
         echo "使用本地Typst缓存" && \
         chmod +x /tmp/typst-cache/typst && \
         mv /tmp/typst-cache/typst /usr/local/bin/typst; \
+        typst --version && \
+        echo "本地Typst缓存使用成功"; \
     else \
-        echo "从网络下载Typst" && \
-        curl -fsSL https://ghproxy.com/https://github.com/typst/typst/releases/download/v0.14.0/typst-0.14.0-linux-x86_64-musl.tar.xz -o typst.tar.xz && \
-        tar -xf typst.tar.xz && \
-        mv typst-0.14.0-linux-x86_64-musl/typst /usr/local/bin/ && \
-        rm -rf typst-0.14.0-linux-x86_64-musl.tar.xz typst-0.14.0-linux-x86_64-musl; \
+        echo "未找到本地缓存，从网络下载..." && \
+        # 根据目标架构选择合适的Typst二进制文件
+        if [ "$TARGETARCH" = "amd64" ]; then \
+            echo "下载x86_64架构的Typst..." && \
+            curl -fsSL https://github.com/typst/typst/releases/download/v0.14.2/typst-x86_64-unknown-linux-musl.tar.xz -o typst.tar.xz && \
+            tar -xf typst.tar.xz && \
+            mv typst /usr/local/bin/typst && \
+            rm -rf typst.tar.xz; \
+        elif [ "$TARGETARCH" = "arm64" ]; then \
+            echo "下载aarch64架构的Typst..." && \
+            curl -fsSL https://github.com/typst/typst/releases/download/v0.14.2/typst-aarch64-unknown-linux-musl.tar.xz -o typst.tar.xz && \
+            tar -xf typst.tar.xz && \
+            mv typst /usr/local/bin/typst && \
+            rm -rf typst.tar.xz; \
+        else \
+            echo "未知架构，使用默认x86_64..." && \
+            curl -fsSL https://github.com/typst/typst/releases/download/v0.14.2/typst-x86_64-unknown-linux-musl.tar.xz -o typst.tar.xz && \
+            tar -xf typst.tar.xz && \
+            mv typst /usr/local/bin/typst && \
+            rm -rf typst.tar.xz; \
+        fi && \
+        chmod +x /usr/local/bin/typst && \
+        typst --version; \
     fi
 
 # 配置pip使用国内镜像源
