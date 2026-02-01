@@ -47,12 +47,13 @@ def markdown_to_html(text: str) -> str:
 
 router = APIRouter(redirect_slashes=False)
 
+@router.post("", response_model=ChatResponse)
 @router.post("/", response_model=ChatResponse)
 async def chat(
     chat_request: ChatRequest,
     db: Session = Depends(get_ai_db)
 ):
-    """与AI智能体聊天"""
+    """与AI智能体聊天（同时支持/chat和/chat/）"""
     # 从请求中获取参数
     user_id = chat_request.user_id
     agent_id = chat_request.agent_id
