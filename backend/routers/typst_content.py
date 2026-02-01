@@ -15,7 +15,7 @@ import json
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(redirect_slashes=False)
 
 # 获取内容目录路径
 def get_content_dir() -> Path:

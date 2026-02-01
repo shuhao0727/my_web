@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from config.database import get_ai_db
 from models.ai_models import AiAgent
 
-router = APIRouter()
+router = APIRouter(redirect_slashes=False)
 
 # Pydantic models for request/response
 class AgentCreateRequest(BaseModel):
@@ -33,6 +33,7 @@ class AgentUpdateRequest(BaseModel):
 class AgentStatusUpdateRequest(BaseModel):
     is_active: bool
 
+@router.get("", include_in_schema=False)
 @router.get("/")
 async def get_agents(
     active_only: bool = False,
@@ -110,6 +111,7 @@ async def get_agent(agent_id: int, db: Session = Depends(get_ai_db)):
         }
     }
 
+@router.post("", include_in_schema=False)
 @router.post("/")
 async def create_agent(
     agent_data: AgentCreateRequest,

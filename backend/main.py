@@ -24,11 +24,11 @@ else:
     os.environ.setdefault('BACKEND_HOST', '0.0.0.0')
     os.environ.setdefault('BACKEND_PORT', '8000')
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from contextlib import asynccontextmanager
 
 @asynccontextmanager
@@ -103,6 +103,7 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
     debug=os.getenv("APP_DEBUG", "false").lower() == "true",
+    redirect_slashes=False,  # 禁用斜杠重定向，解决307重定向问题
 )
 
 # 全局异常处理
@@ -138,8 +139,94 @@ app.add_middleware(
 content_dir = os.getenv("CONTENT_DIR", "./content")
 os.makedirs(content_dir, exist_ok=True)
 
-app.mount("/content", StaticFiles(directory=content_dir), name="content")
-print(f"✅ 静态文件服务已挂载: /content -> {content_dir}")
+# 内容目录API端点 - 统一处理目录列表和文件服务
+@app.get("/content")
+@app.get("/content/")
+@app.get("/content/{path:path}")
+async def serve_content(path: str = ""):
+    """统一的内容服务端点：返回目录列表或文件内容"""
+    import logging
+    from fastapi.responses import FileResponse
+    logger = logging.getLogger(__name__)
+    
+    try:
+        # 构建完整路径
+        full_path = os.path.join(content_dir, path)
+        
+        if not os.path.exists(full_path):
+            raise HTTPException(status_code=404, detail=f"路径不存在: {path}")
+        
+        # 如果是目录，返回目录列表
+        if os.path.isdir(full_path):
+            try:
+                files = []
+                for f in os.listdir(full_path):
+                    file_path = os.path.join(full_path, f)
+                    files.append({
+                        "name": f,
+                        "type": "directory" if os.path.isdir(file_path) else "file",
+                        "size": os.path.getsize(file_path) if os.path.isfile(file_path) else 0,
+                        "path": os.path.join(path, f) if path else f
+                    })
+                
+                return {
+                    "path": path or "/",
+                    "type": "directory",
+                    "files": files,
+                    "count": len(files)
+                }
+            except Exception as dir_exc:
+                logger.error(f"读取目录失败: {str(dir_exc)}")
+                raise HTTPException(status_code=500, detail=f"无法读取目录: {str(dir_exc)}")
+        
+        # 如果是文件，返回文件内容
+        else:
+            # 检查文件类型，设置适当的媒体类型
+            media_type = None
+            if full_path.endswith('.md'):
+                media_type = 'text/markdown'
+            elif full_path.endswith('.txt'):
+                media_type = 'text/plain'
+            elif full_path.endswith('.html'):
+                media_type = 'text/html'
+            elif full_path.endswith('.css'):
+                media_type = 'text/css'
+            elif full_path.endswith('.js'):
+                media_type = 'application/javascript'
+            elif full_path.endswith('.json'):
+                media_type = 'application/json'
+            elif full_path.endswith('.png'):
+                media_type = 'image/png'
+            elif full_path.endswith('.jpg') or full_path.endswith('.jpeg'):
+                media_type = 'image/jpeg'
+            elif full_path.endswith('.gif'):
+                media_type = 'image/gif'
+            
+            return FileResponse(
+                path=full_path,
+                media_type=media_type,
+                filename=os.path.basename(full_path)
+            )
+            
+    except Exception as e:
+        logger.error(f"处理内容请求失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"服务器错误: {str(e)}")
+
+print(f"✅ 内容服务已注册: /content/* -> {content_dir}")
+
+# 健康检查
+@app.get("/")
+async def root():
+    """根路由，返回API状态"""
+    return {
+        "app": "MyWeb后端API",
+        "version": "1.0.0",
+        "status": "running",
+        "docs": "/docs",
+        "static_files": "/content",
+        "environment": os.getenv("APP_ENV", "development"),
+        "content_dir": os.getenv("CONTENT_DIR", "./content"),
+    }
 
 # 新增仓库同步路由
 try:
@@ -157,10 +244,10 @@ try:
 except ImportError as e:
     print(f"⚠️  AI智能体路由导入失败: {e}")
 
-# 新增XBK应用路由
+# 新增XBK路由集合
 try:
     from routers.xbk.applications import xbk_router
-    app.include_router(xbk_router, prefix="/api/xbk")  # 保持/api前缀以适配Nginx配置
+    app.include_router(xbk_router, prefix="/api/xbk")  # 应用主要端点 (applications, health, login, users)
     print("✅ XBK应用路由已加载")
 except ImportError as e:
     print(f"⚠️  XBK应用路由导入失败: {e}")
@@ -168,7 +255,7 @@ except ImportError as e:
 # 新增XBK数据处理路由
 try:
     from routers.xbk.routes import data_router
-    app.include_router(data_router, prefix="/api/xbk")  # 保持/api前缀以适配Nginx配置
+    app.include_router(data_router, prefix="/api/xbk")  # 数据相关端点
     print("✅ XBK数据处理路由已加载")
 except ImportError as e:
     print(f"⚠️  XBK数据处理路由导入失败: {e}")
@@ -176,7 +263,7 @@ except ImportError as e:
 # 新增XBK安全认证路由
 try:
     from routers.xbk.auth import router as auth_router
-    app.include_router(auth_router, prefix="/api/xbk")  # 保持/api前缀以适配Nginx配置
+    app.include_router(auth_router, prefix="/api/xbk")  # 认证相关端点
     print("✅ XBK安全认证路由已加载")
 except ImportError as e:
     print(f"⚠️  XBK安全认证路由导入失败: {e}")
@@ -196,20 +283,6 @@ try:
     print("✅ Markdown内容路由已加载")
 except ImportError as e:
     print(f"⚠️  Markdown内容路由导入失败: {e}")
-
-# 健康检查
-@app.get("/")
-async def root():
-    """根路由，返回API状态"""
-    return {
-        "app": "MyWeb后端API",
-        "version": "1.0.0",
-        "status": "running",
-        "docs": "/docs",
-        "static_files": "/content",
-        "environment": os.getenv("APP_ENV", "development"),
-        "content_dir": os.getenv("CONTENT_DIR", "./content"),
-    }
 
 @app.get("/health")
 async def health_check():

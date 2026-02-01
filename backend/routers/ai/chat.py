@@ -45,7 +45,7 @@ def markdown_to_html(text: str) -> str:
     # 所以直接返回原始文本
     return text
 
-router = APIRouter()
+router = APIRouter(redirect_slashes=False)
 
 @router.post("/", response_model=ChatResponse)
 async def chat(

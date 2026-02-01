@@ -12,8 +12,8 @@ from .chat import router as chat_router
 from .user_management import router as user_management_router
 from .data import router as data_router
 
-# 创建主路由器
-router = APIRouter()
+# 创建主路由器 - 禁用斜杠重定向
+router = APIRouter(redirect_slashes=False)
 
 # 包含子路由
 router.include_router(auth_router, prefix="/auth", tags=["ai-auth"])

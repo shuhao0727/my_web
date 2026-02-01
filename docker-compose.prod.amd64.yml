@@ -1,12 +1,13 @@
-# MyWeb 生产模式配置 (本地构建)
+# MyWeb 生产模式配置 (AMD64架构)
 # 前端使用6608端口，后端不对外暴露，Nginx统一代理
-# 部署命令: docker-compose -f docker-compose.prod.local.yml up -d --build
+# 部署命令: docker-compose -f docker-compose.prod.amd64.yml up -d
 
 version: '3.8'
 services:
   backend:
-    image: shuhao07/my_web-backend:1.1.0
-    container_name: myweb_backend_prod
+    image: myweb-backend:latest
+    container_name: myweb_backend_prod_amd64
+    platform: linux/amd64
     environment:
       - APP_ENV=production
       - BACKEND_HOST=0.0.0.0
@@ -55,7 +56,8 @@ services:
 
   frontend:
     image: shuhao07/my_web-frontend:1.1.0
-    container_name: myweb_frontend_prod
+    container_name: myweb_frontend_prod_amd64
+    platform: linux/amd64
     environment:
       - NEXT_PUBLIC_API_URL=/api
       - NODE_ENV=production
@@ -77,7 +79,8 @@ services:
 
   nginx:
     image: nginx:alpine
-    container_name: myweb_nginx_prod
+    container_name: myweb_nginx_prod_amd64
+    platform: linux/amd64
     ports:
       - "6608:6608"  # 生产环境使用6608端口提供外部访问
     volumes:

@@ -56,6 +56,30 @@ async def login(login_request: LoginRequest):
         }
     }
 
+# 应用信息端点
+@xbk_router.get("/applications")
+async def get_applications():
+    """获取XBK应用信息"""
+    return {
+        "name": "XBK选课管理系统",
+        "version": "1.0.0",
+        "description": "学校选课管理系统",
+        "endpoints": {
+            "auth": {
+                "login": "/api/xbk/auth/login (POST)",
+                "me": "/api/xbk/auth/me (GET, 需要认证)"
+            },
+            "data": {
+                "import": "/api/xbk/data/import/{type} (POST)",
+                "export": "/api/xbk/data/export/{type} (GET)",
+                "query": "/api/xbk/data/{type} (GET)",
+                "config": "/api/xbk/data/config/system (GET/POST)",
+                "analysis": "/api/xbk/data/analysis/* (GET)"
+            }
+        },
+        "status": "active"
+    }
+
 # 健康检查端点
 @xbk_router.get("/health")
 async def health_check():

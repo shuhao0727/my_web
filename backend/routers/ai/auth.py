@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 from config.database import get_ai_db
 from models.ai_models import AiUser
 
-router = APIRouter(tags=["ai-auth"])
+router = APIRouter(tags=["ai-auth"], redirect_slashes=False)
 security = HTTPBearer()
 
 # 从环境变量获取JWT密钥，如果不存在则使用安全的默认值

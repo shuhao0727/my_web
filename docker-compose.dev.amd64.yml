@@ -1,6 +1,6 @@
-# MyWeb 开发模式配置
+# MyWeb 开发模式配置 (AMD64架构)
 # 前端使用6608端口，后端内部使用8000端口，Nginx代理外部访问
-# 部署命令: docker-compose -f docker-compose.dev.yml up -d
+# 部署命令: docker-compose -f docker-compose.dev.amd64.yml up -d
 
 version: '3.8'
 services:
@@ -8,7 +8,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
-    container_name: myweb_backend_dev
+      platform: linux/amd64
+    container_name: myweb_backend_dev_amd64
+    platform: linux/amd64
     environment:
       - APP_ENV=development
       - BACKEND_HOST=0.0.0.0
@@ -62,7 +64,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
-    container_name: myweb_frontend_dev
+      platform: linux/amd64
+    container_name: myweb_frontend_dev_amd64
+    platform: linux/amd64
     environment:
       - NEXT_PUBLIC_API_URL=/api
       - NODE_ENV=development
@@ -90,7 +94,8 @@ services:
 
   nginx:
     image: nginx:alpine
-    container_name: myweb_nginx_dev
+    container_name: myweb_nginx_dev_amd64
+    platform: linux/amd64
     ports:
       - "6608:6608"  # 开发模式使用6608端口
     volumes:

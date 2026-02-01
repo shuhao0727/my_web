@@ -10,8 +10,9 @@ from datetime import datetime
 from config.database import get_ai_db
 from models.ai_models import AiConversation, AiAgent
 
-router = APIRouter()
+router = APIRouter(redirect_slashes=False)
 
+@router.get("", include_in_schema=False)
 @router.get("/")
 async def get_conversations(
     user_id: Optional[int] = None,
